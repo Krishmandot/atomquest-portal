@@ -215,7 +215,7 @@ const SEED_GOALS = [
     description: "Drive direct sales across North zone channels", uom: "Min (Numeric/%)", target: 12000000,
     achievement: 9800000, weightage: 40, status: "On Track", goalStatus: "approved", isShared: false,
     checkIns: [{ quarter: "Q1", comment: "Strong pipeline, 82% achieved", by: "mgr1", date: "Jul 15" }],
-    auditLog: []
+    auditLog: [{ action: "approved", by: "mgr1", reason: "Manager approved", date: "1/5/2026" }]
   },
   {
     id: "g2", employeeId: "emp1", thrustArea: "Customer Experience", title: "Maintain NPS above 72",
@@ -506,6 +506,13 @@ function openWeightageOnly(g) {
   setShowForm("weightage-only");
 }
   function validate() {
+    if (showForm === "weightage-only") {
+    const errs = {};
+    const w = Number(form.weightage);
+    if (!w) errs.weightage = "Required";
+    else if (w < 10) errs.weightage = "Min 10%";
+    return errs;
+  }
     const errs = {};
     if (!form.title.trim()) errs.title = "Required";
     if (!form.target) errs.target = "Required";
@@ -533,9 +540,10 @@ function openWeightageOnly(g) {
   }
 
   function handleSubmit(goalId) {
-    if (tw !== 100) return alert("Total weightage must equal exactly 100% before submitting.");
-    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, goalStatus: "pending" } : g));
-  }
+  if (tw !== 100) return alert("Total weightage must equal exactly 100% before submitting.");
+  setGoals(prev => prev.map(g => g.id === goalId ? { ...g, goalStatus: "pending" } : g));
+  alert("Goal submitted for manager approval!");
+}
 
  function handleSubmitAll() {
   const draftGoals = myGoals.filter(g => g.goalStatus === "draft");
@@ -650,7 +658,9 @@ function openWeightageOnly(g) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
           <div className="card fadeUp" style={{ width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 800 }}>{editGoal ? "Edit Goal" : "Add New Goal"}</h3>
+              <h3 style={{ fontSize: 18, fontWeight: 800 }}>
+  {showForm === "weightage-only" ? "Adjust Weightage" : editGoal ? "Edit Goal" : "Add New Goal"}
+</h3>
               <button className="btn-ghost" style={{ padding: "6px 12px" }} onClick={() => setShowForm(false)}>✕</button>
             </div>
 
@@ -841,9 +851,6 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
     Update {selectedQ}
   </button>
 )}
-                {!windowOpen && (
-                  <span style={{ fontSize: 11, color: COLORS.muted, fontWeight: 600 }}>Window Closed</span>
-                )}
               </div>
 
               {isEditing ? (
@@ -1018,7 +1025,11 @@ function returnGoal(gid) {
       <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 28 }}>{pendingGoals.length} goals pending your review</p>
 
       {pendingGoals.length === 0 && (
-        <div className="card" style={{ textAlign: "center", color: COLORS.muted, padding: 48 }}>All caught up — no pending approvals.</div>
+       <div className="card" style={{ textAlign: "center", color: COLORS.muted, padding: 48 }}>
+  <div style={{ fontSize: 24, marginBottom: 12 }}>✓</div>
+  <div style={{ fontWeight: 700, marginBottom: 6 }}>All caught up</div>
+  <div style={{ fontSize: 13 }}>No pending approvals. Goals submitted by your team will appear here.</div>
+</div>
       )}
 
       {pendingGoals.map(g => {
