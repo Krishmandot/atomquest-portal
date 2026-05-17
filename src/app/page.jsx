@@ -1607,7 +1607,7 @@ return (
         <div className="sidebar-wrap" style={{ zIndex: 10 }}>
           <Sidebar user={user} view={view} setView={setView} onLogout={handleLogout} />
         </div>
-        <main className="main-content" style={{ ...MAIN_PAD, padding: "36px", flex: 1, overflowX: "hidden" }}>
+       <main className="main-content" style={{ padding: "36px 36px 36px 266px", flex: 1, overflowX: "hidden", minHeight: "100vh" }}>
           {renderView()}
         </main>
       </div>
