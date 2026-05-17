@@ -686,7 +686,7 @@ function MyGoalsView({ user, goals, setGoals, allUsers }) {
 
 // ─── CHECK-IN VIEW (Employee) ─────────────────────────────────────────────────
 function CheckInView({ user, goals, setGoals, activeQ }) {
-  const activeQ = getActiveQuarter();
+  
   const myGoals = goals.filter(g => g.employeeId === user.id && g.goalStatus === "approved");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
