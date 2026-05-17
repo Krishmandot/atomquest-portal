@@ -647,7 +647,10 @@ function openWeightageOnly(g) {
                   <td>
                     <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{g.title}</div>
                     <div style={{ fontSize: 11, color: COLORS.muted, display: "flex", gap: 6, alignItems: "center" }}>
-                      {g.thrustArea} {g.isShared && <span style={{ color: COLORS.blue, fontWeight: 700 }}>· SHARED</span>}
+                      {g.thrustArea} {g.isShared && (
+  <span title="This goal was pushed by your manager/admin. Only weightage can be adjusted." 
+    style={{ color: COLORS.blue, fontWeight: 700, cursor: "help" }}>· SHARED ⓘ</span>
+)}
                     </div>
                   </td>
                   <td><span className="mono" style={{ fontSize: 12, color: COLORS.muted }}>{g.uom.split(" ")[0]}</span></td>
@@ -668,6 +671,13 @@ function openWeightageOnly(g) {
                   <td style={{ textAlign: "right" }}>
                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: statusColor(g.goalStatus), textTransform: "uppercase", letterSpacing: .4, alignSelf: "center" }}>{g.goalStatus}</span>
+                      {g.goalStatus === "approved" && (
+  <span title="Goal is locked after approval. Contact Admin to unlock." style={{ 
+    fontSize: 10, fontWeight: 700, color: COLORS.blue, 
+    border: `1px solid ${COLORS.blue}`, borderRadius: 4, 
+    padding: "2px 7px", cursor: "help" 
+  }}>🔒 LOCKED</span>
+)}
                       {g.goalStatus === "draft" && !g.isShared && (
                         <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }} onClick={() => openEdit(g)}>Edit</button>
                       )}
@@ -788,6 +798,10 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
   function openEdit(g) { setEditing(g.id); setForm({ achievement: g.achievement ?? "", status: g.status }); }
 
   function handleSave(goalId) {
+  if (form.achievement === "" || isNaN(Number(form.achievement))) {
+    if (showToast) showToast("Please enter a valid achievement value.", "error");
+    return;
+  }
   setGoals(prev => {
     const goalToUpdate = prev.find(g => g.id === goalId);
     return prev.map(g => {
@@ -1042,6 +1056,7 @@ async function sendNotification(type, to, employeeName, goalTitle, managerName =
 
 function returnGoal(gid) {
   const goal = goals.find(g => g.id === gid);
+  if (!window.confirm(`Return "${goal.title}" for rework? The employee will be notified.`)) return;
   const emp = allUsers[goal.employeeId];
   sendNotification("returned", emp.email, emp.name, goal.title);
   setGoals(prev => prev.map(g => g.id === gid ? {
@@ -1156,7 +1171,14 @@ function MgrCheckinView({ user, goals, setGoals, allUsers }) {
   const [comment, setComment] = useState("");
 
   function addComment(gid) {
-    if (!comment.trim()) return;
+    if (!comment.trim()) { 
+  if (showToast) showToast("Comment cannot be empty.", "error"); 
+  return; 
+}
+if (comment.trim().length < 10) {
+  if (showToast) showToast("Please write at least 10 characters.", "error");
+  return;
+}
     setGoals(prev => prev.map(g => g.id === gid ? {
       ...g, checkIns: [...g.checkIns, { quarter: "Q1", comment: comment.trim(), by: user.id, date: new Date().toLocaleDateString() }]
     } : g));
@@ -1836,6 +1858,8 @@ function PushGoalView({ goals, setGoals, allUsers, showToast }) {
 
   function push() {
     if (!form.title || !form.target || selected.length === 0) { showToast("Fill all fields and select at least one employee.", "error"); return; }
+    if (Number(form.target) < 0) { showToast("Target cannot be negative.", "error"); return; }
+if (Number(form.weightage) < 10) { showToast("Minimum weightage is 10%.", "error"); return; }
     const newGoals = selected.map(empId => ({
       ...form, id: `sg_${empId}_${Date.now()}`, employeeId: empId,
       target: Number(form.target), weightage: Number(form.weightage),
