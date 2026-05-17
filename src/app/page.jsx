@@ -195,6 +195,35 @@ const STYLE = `
     }
   }
 `;
+// ─── TOAST SYSTEM ─────────────────────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  function showToast(message, type = "success") {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  }
+  return { toasts, showToast };
+}
+
+function ToastContainer({ toasts }) {
+  if (!toasts.length) return null;
+  return (
+    <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 999, display: "flex", flexDirection: "column", gap: 10 }}>
+      {toasts.map(t => (
+        <div key={t.id} className="fadeUp" style={{
+          padding: "12px 20px", borderRadius: 10, fontFamily: "'Syne', sans-serif",
+          fontSize: 14, fontWeight: 600, maxWidth: 320,
+          background: t.type === "success" ? "rgba(52,211,153,0.15)" : t.type === "error" ? "rgba(248,113,113,0.15)" : "rgba(96,165,250,0.15)",
+          border: `1px solid ${t.type === "success" ? "#34D399" : t.type === "error" ? "#F87171" : "#60A5FA"}`,
+          color: t.type === "success" ? "#34D399" : t.type === "error" ? "#F87171" : "#60A5FA",
+        }}>
+          {t.type === "success" ? "✓ " : t.type === "error" ? "✕ " : "ℹ "}{t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const THRUST_AREAS = ["Revenue Growth", "Cost Optimisation", "Customer Experience", "Product Quality", "People & Culture", "Operational Excellence", "Safety & Compliance", "Innovation"];
 const UOM_TYPES = ["Min (Numeric/%)", "Max (Numeric/%)", "Timeline", "Zero"];
@@ -545,14 +574,14 @@ function openWeightageOnly(g) {
   }
 
   function handleSubmit(goalId) {
-  if (tw !== 100) return alert("Total weightage must equal exactly 100% before submitting.");
+  if (tw !== 100) { showToast(`Weightage is ${tw}%. Must be exactly 100%.`, "error"); return; }
   setGoals(prev => prev.map(g => g.id === goalId ? { ...g, goalStatus: "pending" } : g));
   alert("Goal submitted for manager approval!");
 }
 
  function handleSubmitAll() {
   const draftGoals = myGoals.filter(g => g.goalStatus === "draft");
-  if (tw !== 100) { alert(`Total weightage is ${tw}%. Must be exactly 100%.`); return; }
+  if (tw !== 100) { showToast(`Weightage is ${tw}%. Must be exactly 100%.`, "error"); return; }
   const underMin = draftGoals.find(g => Number(g.weightage) < 10);
   if (underMin) {
     alert(`Goal "${underMin.title}" has weightage below 10%. Minimum is 10%.`);
@@ -1124,7 +1153,7 @@ function MgrCheckinView({ user, goals, setGoals, allUsers }) {
   function addComment(gid) {
     if (!comment.trim()) return;
     setGoals(prev => prev.map(g => g.id === gid ? {
-      ...g, checkIns: [...g.checkIns, { quarter: "Q1", comment: comment.trim(), by: user.id, date: "Jul 2025" }]
+      ...g, checkIns: [...g.checkIns, { quarter: "Q1", comment: comment.trim(), by: user.id, date: new Date().toLocaleDateString() }]
     } : g));
     setCommentGoal(null);
     setComment("");
@@ -1796,7 +1825,7 @@ function PushGoalView({ goals, setGoals, allUsers }) {
   }
 
   function push() {
-    if (!form.title || !form.target || selected.length === 0) return alert("Fill all fields and select at least one employee.");
+    if (!form.title || !form.target || selected.length === 0) { showToast("Fill all fields and select at least one employee.", "error"); return; }
     const newGoals = selected.map(empId => ({
       ...form, id: `sg_${empId}_${Date.now()}`, employeeId: empId,
       target: Number(form.target), weightage: Number(form.weightage),
@@ -1996,55 +2025,52 @@ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
     </div>
   );
 }
-
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
- const [goals, setGoals] = useState(SEED_GOALS);
+  const [goals, setGoals] = useState(SEED_GOALS);
+  const { toasts, showToast } = useToast();
 
-useEffect(() => {
-  try {
-    const saved = localStorage.getItem("atomquest_goals");
-    if (saved) setGoals(JSON.parse(saved));
-  } catch (e) {
-    console.error("Failed to load saved goals:", e);
-  }
-}, []);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("atomquest_goals");
+      if (saved) setGoals(JSON.parse(saved));
+    } catch (e) { console.error("Failed to load saved goals:", e); }
+  }, []);
 
-useEffect(() => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("atomquest_goals", JSON.stringify(goals));
-  }
-}, [goals]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("atomquest_goals", JSON.stringify(goals));
+    }
+  }, [goals]);
+
   const [view, setView] = useState(null);
-const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-useEffect(() => {
-  const check = () => setIsMobile(window.innerWidth <= 768);
-  check();
-  window.addEventListener("resize", check);
-  return () => window.removeEventListener("resize", check);
-}, []);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   function handleLogin(u) {
-  const defaultViews = { employee: "my-goals", manager: "team", admin: "admin-dash" };
-  setView(defaultViews[u.role]);
-  setUser(u);
-}
+    const defaultViews = { employee: "my-goals", manager: "team", admin: "admin-dash" };
+    setView(defaultViews[u.role]);
+    setUser(u);
+    showToast(`Welcome, ${u.name.split(" ")[0]}!`, "info");
+  }
 
   function handleLogout() { setUser(null); setView(null); }
 
   if (!user) return <Login onLogin={handleLogin} />;
 
-  const MAIN_PAD = { paddingLeft: 254, paddingTop: 0 };
-
   function renderView() {
-    const props = { user, goals, setGoals, allUsers: USERS };
+    const props = { user, goals, setGoals, allUsers: USERS, showToast };
     switch (view) {
       case "my-goals":    return <MyGoalsView {...props} />;
-      case "team":      return <TeamView {...props} />;
-    case "checkin": 
-      return <CheckInView user={user} goals={goals} setGoals={setGoals} />;
-      
+      case "team":        return <TeamView {...props} />;
+      case "checkin":     return <CheckInView user={user} goals={goals} setGoals={setGoals} showToast={showToast} />;
       case "approvals":   return <ApprovalsView {...props} />;
       case "mgr-checkin": return <MgrCheckinView {...props} />;
       case "admin-dash":  return <AdminDashView {...props} />;
@@ -2060,17 +2086,18 @@ useEffect(() => {
     }
   }
 
-return (
+  return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column" }}>
       <style>{STYLE}</style>
       <div style={{ display: "flex", flex: 1, flexDirection: isMobile ? "column" : "row" }}>
-        <div className="sidebar-wrap" style={{ zIndex: 10 }}>
+        <div style={{ zIndex: 10 }}>
           <Sidebar user={user} view={view} setView={setView} onLogout={handleLogout} />
         </div>
-       <main className="main-content" style={{ padding: "36px 36px 36px 266px", flex: 1, overflowX: "hidden", minHeight: "100vh" }}>
+        <main className="main-content" style={{ padding: "36px 36px 36px 266px", flex: 1, overflowX: "hidden", minHeight: "100vh" }}>
           {renderView()}
         </main>
       </div>
+      <ToastContainer toasts={toasts} />
     </div>
   );
 }
