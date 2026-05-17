@@ -575,8 +575,10 @@ function openWeightageOnly(g) {
     setShowForm(false);
   }
 
-  function handleSubmit(goalId) {
+ function handleSubmit(goalId) {
   if (tw !== 100) { showToast(`Weightage is ${tw}%. Must be exactly 100%.`, "error"); return; }
+  const goal = goals.find(g => g.id === goalId);
+  if (goal?.goalStatus === "pending") { showToast("Already submitted.", "info"); return; }
   setGoals(prev => prev.map(g => g.id === goalId ? { ...g, goalStatus: "pending" } : g));
   if (showToast) showToast("Goal submitted for approval!");
 }
@@ -685,7 +687,11 @@ function openWeightageOnly(g) {
   <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }} onClick={() => openWeightageOnly(g)}>Adjust Weight</button>
 )}
                       {g.goalStatus === "draft" && (
-                        <button className="btn-primary" style={{ padding: "5px 10px", fontSize: 12 }} onClick={() => handleSubmit(g.id)}>Submit</button>
+                        <button className="btn-primary" style={{ padding: "5px 10px", fontSize: 12 }}
+  onClick={() => handleSubmit(g.id)}
+  title={tw === 100 ? "Ready to submit" : `Weightage is ${tw}% — must be 100% to submit`}>
+  Submit {tw !== 100 && `(${tw}%)`}
+</button>
                       )}
                       {g.goalStatus === "rework" && (
                         <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }} onClick={() => openEdit(g)}>Rework</button>
@@ -729,7 +735,7 @@ function openWeightageOnly(g) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
-          <label>Unit of Measurement</label>
+         <label>Unit of Measurement <span title="Min = Higher is better (e.g. Revenue). Max = Lower is better (e.g. Cost). Timeline = Date-based. Zero = Zero incidents = 100% score." style={{ cursor: "help", color: COLORS.muted }}>ⓘ</span></label>
           <select value={form.uom} onChange={e => setForm(f => ({ ...f, uom: e.target.value }))}>
             {UOM_TYPES.map(u => <option key={u}>{u}</option>)}
           </select>
@@ -1045,7 +1051,9 @@ async function sendNotification(type, to, employeeName, goalTitle, managerName =
 }
   function approve(gid) {
   const goal = goals.find(g => g.id === gid);
+  if (!goal) return;
   const emp = allUsers[goal.employeeId];
+  if (!emp) return;
   sendNotification("approved", emp.email, emp.name, goal.title);
   setGoals(prev => prev.map(g => g.id === gid ? {
     ...g, goalStatus: "approved",
@@ -1056,6 +1064,7 @@ async function sendNotification(type, to, employeeName, goalTitle, managerName =
 
 function returnGoal(gid) {
   const goal = goals.find(g => g.id === gid);
+  if (!goal) return;
   if (!window.confirm(`Return "${goal.title}" for rework? The employee will be notified.`)) return;
   const emp = allUsers[goal.employeeId];
   sendNotification("returned", emp.email, emp.name, goal.title);
@@ -1733,7 +1742,16 @@ function AdminDashView({ goals, allUsers }) {
   return (
     <div className="fadeUp">
       <style>{STYLE}</style>
-      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 28 }}>Organisation Overview</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+  <h2 style={{ fontSize: 22, fontWeight: 800 }}>Organisation Overview</h2>
+  <button className="btn-ghost" style={{ fontSize: 12, color: COLORS.danger, borderColor: COLORS.danger }}
+    onClick={() => {
+      if (window.confirm("Reset all data to demo defaults?")) {
+        localStorage.removeItem("atomquest_goals");
+        window.location.reload();
+      }
+    }}>↺ Reset Demo</button>
+</div>
 
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
         <StatCard label="Total Employees" value={employees.length} />
