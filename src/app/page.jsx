@@ -950,31 +950,34 @@ function ApprovalsView({ user, goals, setGoals, allUsers }) {
   const [editForm, setEditForm] = useState({});
   const [commentGoal, setCommentGoal] = useState(null);
   const [comment, setComment] = useState("");
-
+async function sendNotification(type, to, employeeName, goalTitle, managerName = "") {
+  try {
+    await fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, to, employeeName, goalTitle, managerName })
+    });
+  } catch (e) { console.log("Notification failed", e); }
+}
   function approve(gid) {
   const goal = goals.find(g => g.id === gid);
+  const emp = allUsers[goal.employeeId];
+  sendNotification("approved", emp.email, emp.name, goal.title);
   setGoals(prev => prev.map(g => g.id === gid ? {
     ...g, goalStatus: "approved",
-    auditLog: [...g.auditLog, {
-      action: "approved", by: user.id,
-      reason: "Manager approved goal",
-      date: new Date().toLocaleDateString()
-    }]
+    auditLog: [...g.auditLog, { action: "approved", by: user.id, reason: "Manager approved", date: new Date().toLocaleDateString() }]
   } : g));
 }
+
 function returnGoal(gid) {
+  const goal = goals.find(g => g.id === gid);
+  const emp = allUsers[goal.employeeId];
+  sendNotification("returned", emp.email, emp.name, goal.title);
   setGoals(prev => prev.map(g => g.id === gid ? {
     ...g, goalStatus: "rework",
-    auditLog: [...g.auditLog, {
-      action: "returned for rework", by: user.id,
-      reason: "Manager returned for revision",
-      date: new Date().toLocaleDateString()
-    }]
+    auditLog: [...g.auditLog, { action: "returned for rework", by: user.id, reason: "Manager returned", date: new Date().toLocaleDateString() }]
   } : g));
 }
-  function returnGoal(gid) {
-    setGoals(prev => prev.map(g => g.id === gid ? { ...g, goalStatus: "rework" } : g));
-  }
   function saveInlineEdit() {
   setGoals(prev => prev.map(g => g.id === editingGoal.id ? {
     ...g, ...editForm,
