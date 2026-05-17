@@ -537,11 +537,16 @@ function openWeightageOnly(g) {
     setGoals(prev => prev.map(g => g.id === goalId ? { ...g, goalStatus: "pending" } : g));
   }
 
-  function handleSubmitAll() {
-    const draftGoals = myGoals.filter(g => g.goalStatus === "draft");
-    if (tw !== 100) { alert(`Total weightage is ${tw}%. Must be exactly 100%.`); return; }
-    setGoals(prev => prev.map(g => g.employeeId === user.id && g.goalStatus === "draft" ? { ...g, goalStatus: "pending" } : g));
+ function handleSubmitAll() {
+  const draftGoals = myGoals.filter(g => g.goalStatus === "draft");
+  if (tw !== 100) { alert(`Total weightage is ${tw}%. Must be exactly 100%.`); return; }
+  const underMin = draftGoals.find(g => Number(g.weightage) < 10);
+  if (underMin) {
+    alert(`Goal "${underMin.title}" has weightage below 10%. Minimum is 10%.`);
+    return;
   }
+  setGoals(prev => prev.map(g => g.employeeId === user.id && g.goalStatus === "draft" ? { ...g, goalStatus: "pending" } : g));
+}
 
   const weightUsed = tw;
   const weightLeft = 100 - weightUsed;
@@ -733,23 +738,25 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
   function openEdit(g) { setEditing(g.id); setForm({ achievement: g.achievement ?? "", status: g.status }); }
 
   function handleSave(goalId) {
-  const goalToUpdate = goals.find(g => g.id === goalId);
-  setGoals(prev => prev.map(g => {
-    if (g.id === goalId) return {
-      ...g,
-      achievement: Number(form.achievement),
-      status: form.status,
-      auditLog: [...(g.auditLog || []), {
-        action: `achievement updated to ${form.achievement}, status: ${form.status}`,
-        by: user.id,
-        reason: `${selectedQ} check-in update`,
-        date: new Date().toLocaleDateString()
-      }]
-    };
-    if (g.isShared && goalToUpdate.isShared && g.title === goalToUpdate.title)
-      return { ...g, achievement: Number(form.achievement) };
-    return g;
-  }));
+  setGoals(prev => {
+    const goalToUpdate = prev.find(g => g.id === goalId); // ← inside
+    return prev.map(g => {
+      if (g.id === goalId) return {
+        ...g,
+        achievement: Number(form.achievement),
+        status: form.status,
+        auditLog: [...(g.auditLog || []), {
+          action: `achievement updated to ${form.achievement}, status: ${form.status}`,
+          by: user.id,
+          reason: `${selectedQ} check-in update`,
+          date: new Date().toLocaleDateString()
+        }]
+      };
+      if (goalToUpdate && g.isShared && goalToUpdate.isShared && g.title === goalToUpdate.title)
+        return { ...g, achievement: Number(form.achievement) };
+      return g;
+    });
+  });
   setEditing(null);
 }
 
