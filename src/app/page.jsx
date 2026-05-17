@@ -1042,12 +1042,15 @@ function ApprovalsView({ user, goals, setGoals, allUsers, showToast }) {
   const [comment, setComment] = useState("");
 async function sendNotification(type, to, employeeName, goalTitle, managerName = "") {
   try {
-    await fetch("/api/notify", {
+    const res = await fetch("/api/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, to, employeeName, goalTitle, managerName })
     });
-  } catch (e) { console.warn("Notification failed silently", e); }
+    if (!res.ok && showToast) showToast("Email notification could not be sent.", "info");
+  } catch (e) { 
+    console.warn("Notification failed silently", e);
+  }
 }
   function approve(gid) {
   const goal = goals.find(g => g.id === gid);
@@ -1173,7 +1176,7 @@ function saveInlineEdit() {
 }
 
 // ─── MANAGER CHECK-IN VIEW ────────────────────────────────────────────────────
-function MgrCheckinView({ user, goals, setGoals, allUsers }) {
+function MgrCheckinView({ user, goals, setGoals, allUsers, showToast }) {
   const teamEmpIds = Object.values(allUsers).filter(u => u.role === "employee" && u.managerId === user.id).map(u => u.id);
   const teamGoals = goals.filter(g => teamEmpIds.includes(g.employeeId) && g.goalStatus === "approved");
   const [commentGoal, setCommentGoal] = useState(null);
