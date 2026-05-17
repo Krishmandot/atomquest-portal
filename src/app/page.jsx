@@ -720,15 +720,25 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
   function openEdit(g) { setEditing(g.id); setForm({ achievement: g.achievement ?? "", status: g.status }); }
 
   function handleSave(goalId) {
-    const goalToUpdate = goals.find(g => g.id === goalId);
-    setGoals(prev => prev.map(g => {
-      if (g.id === goalId) return { ...g, achievement: Number(form.achievement), status: form.status };
-      if (g.isShared && goalToUpdate.isShared && g.title === goalToUpdate.title)
-        return { ...g, achievement: Number(form.achievement) };
-      return g;
-    }));
-    setEditing(null);
-  }
+  const goalToUpdate = goals.find(g => g.id === goalId);
+  setGoals(prev => prev.map(g => {
+    if (g.id === goalId) return {
+      ...g,
+      achievement: Number(form.achievement),
+      status: form.status,
+      auditLog: [...(g.auditLog || []), {
+        action: `achievement updated to ${form.achievement}, status: ${form.status}`,
+        by: user.id,
+        reason: `${selectedQ} check-in update`,
+        date: new Date().toLocaleDateString()
+      }]
+    };
+    if (g.isShared && goalToUpdate.isShared && g.title === goalToUpdate.title)
+      return { ...g, achievement: Number(form.achievement) };
+    return g;
+  }));
+  setEditing(null);
+}
 
   const windowOpen = isWindowOpen(selectedQ);
   const selectedQuarterInfo = quarters.find(q => q.key === selectedQ);
@@ -940,31 +950,39 @@ function ApprovalsView({ user, goals, setGoals, allUsers }) {
   const [comment, setComment] = useState("");
 
   function approve(gid) {
-    setGoals(prev => prev.map(g => g.id === gid ? { 
-      ...g, 
-      goalStatus: "approved",
-      auditLog: [...(g.auditLog || []), { 
-        action: "approved", 
-        by: user.id, 
-        reason: "Manager Approval",
-        date: new Date().toLocaleDateString() 
-      }]
-    } : g));
-  }
+  const goal = goals.find(g => g.id === gid);
+  setGoals(prev => prev.map(g => g.id === gid ? {
+    ...g, goalStatus: "approved",
+    auditLog: [...g.auditLog, {
+      action: "approved", by: user.id,
+      reason: "Manager approved goal",
+      date: new Date().toLocaleDateString()
+    }]
+  } : g));
+}
+function returnGoal(gid) {
+  setGoals(prev => prev.map(g => g.id === gid ? {
+    ...g, goalStatus: "rework",
+    auditLog: [...g.auditLog, {
+      action: "returned for rework", by: user.id,
+      reason: "Manager returned for revision",
+      date: new Date().toLocaleDateString()
+    }]
+  } : g));
+}
   function returnGoal(gid) {
     setGoals(prev => prev.map(g => g.id === gid ? { ...g, goalStatus: "rework" } : g));
   }
   function saveInlineEdit() {
-  setGoals(prev => prev.map(g => g.id === editingGoal.id ? { 
-    ...g, 
-    ...editForm, 
-    target: Number(editForm.target), 
+  setGoals(prev => prev.map(g => g.id === editingGoal.id ? {
+    ...g, ...editForm,
+    target: Number(editForm.target),
     weightage: Number(editForm.weightage),
-    auditLog: [...(g.auditLog || []), { 
-      action: "manager inline edit", 
-      by: user.id, 
-      reason: `Target/Weight changed`,
-      date: new Date().toLocaleDateString() 
+    auditLog: [...g.auditLog, {
+      action: `manager edited — target: ${editForm.target}, weightage: ${editForm.weightage}%`,
+      by: user.id,
+      reason: "Inline edit during approval",
+      date: new Date().toLocaleDateString()
     }]
   } : g));
   setEditingGoal(null);
@@ -1556,28 +1574,61 @@ function ExportView({ goals, allUsers }) {
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "AtomQuest_Goals_Report.csv"; a.click();
   }
 
+  function downloadExcel() {
+    const rows = [["Employee", "Dept", "Thrust Area", "Goal Title", "UoM", "Target", "Achievement", "Score (%)", "Status", "Goal Status", "Weight (%)"]];
+    goals.forEach(g => {
+      const emp = allUsers[g.employeeId];
+      const score = computeScore(g);
+      rows.push([emp?.name, emp?.dept, g.thrustArea, g.title, g.uom, g.target, g.achievement ?? "", score ?? "", g.status, g.goalStatus, g.weightage]);
+    });
+
+    // Build XML-based Excel file
+    let xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Worksheet ss:Name="AtomQuest Report"><Table>`;
+    rows.forEach((row, ri) => {
+      xml += "<Row>";
+      row.forEach(cell => {
+        const isNum = ri > 0 && !isNaN(cell) && cell !== "";
+        xml += `<Cell><Data ss:Type="${isNum ? "Number" : "String"}">${String(cell ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</Data></Cell>`;
+      });
+      xml += "</Row>";
+    });
+    xml += "</Table></Worksheet></Workbook>";
+    const blob = new Blob([xml], { type: "application/vnd.ms-excel" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "AtomQuest_Goals_Report.xls"; a.click();
+  }
+
   return (
     <div className="fadeUp">
       <style>{STYLE}</style>
       <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Export Report</h2>
       <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 28 }}>Download achievement data for all employees</p>
 
-      <div className="card" style={{ maxWidth: 420 }}>
+      <div className="card" style={{ maxWidth: 480 }}>
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Achievement Report</div>
-        <p style={{ fontSize: 13, color: COLORS.muted, marginBottom: 20 }}>Exports: Employee, Dept, Thrust Area, Goal Title, UoM, Target, Actual Achievement, Score, Status, Weightage</p>
-        <div style={{ display: "flex", gap: 8 }}>
+        <p style={{ fontSize: 13, color: COLORS.muted, marginBottom: 20 }}>
+          Exports: Employee, Dept, Thrust Area, Goal Title, UoM, Target, Actual Achievement, Score, Status, Weightage
+        </p>
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           <div style={{ background: COLORS.bg, padding: "8px 14px", borderRadius: 8, fontSize: 13 }}>
             <span className="mono" style={{ color: COLORS.muted }}>Rows: </span>
             <span style={{ fontWeight: 700 }}>{goals.length + 1}</span>
           </div>
           <div style={{ background: COLORS.bg, padding: "8px 14px", borderRadius: 8, fontSize: 13 }}>
-            <span className="mono" style={{ color: COLORS.muted }}>Format: </span>
-            <span style={{ fontWeight: 700 }}>CSV</span>
+            <span className="mono" style={{ color: COLORS.muted }}>Employees: </span>
+            <span style={{ fontWeight: 700 }}>{[...new Set(goals.map(g => g.employeeId))].length}</span>
           </div>
         </div>
-        <button className="btn-primary" style={{ marginTop: 20, width: "100%" }} onClick={downloadCSV}>
-          ↓ Download CSV
-        </button>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button className="btn-primary" style={{ flex: 1 }} onClick={downloadCSV}>
+            ↓ Download CSV
+          </button>
+          <button className="btn-ghost" style={{ flex: 1, color: COLORS.success, borderColor: COLORS.success }} onClick={downloadExcel}>
+            ↓ Download Excel
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1619,7 +1670,7 @@ useEffect(() => {
       case "my-goals":    return <MyGoalsView {...props} />;
     case "checkin": 
       return <CheckInView user={user} goals={goals} setGoals={setGoals} />;
-      case "team":        return <TeamView {...props} />;
+      
       case "approvals":   return <ApprovalsView {...props} />;
       case "mgr-checkin": return <MgrCheckinView {...props} />;
       case "admin-dash":  return <AdminDashView {...props} />;
