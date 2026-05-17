@@ -691,12 +691,16 @@ function CheckInView({ user, goals, setGoals }) {
   const myGoals = goals.filter(g => g.employeeId === user.id && g.goalStatus === "approved");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
+  
+ // Active quarter based on current month
+const month = new Date().getMonth() + 1; // 1-12
+const activeQuarter = month >= 5 && month <= 6 ? "Goal Setting" :
+                      month >= 7 && month <= 9 ? "Q1" :
+                      month >= 10 && month <= 12 ? "Q2" :
+                      month >= 1 && month <= 3 ? "Q3" : "Q4";
 
-  // Active quarter based on current month
-  const month = new Date().getMonth() + 1; // 1-12
-  const activeQ = activeQuarter === "Goal Setting" ? null : activeQuarter;
-
-  const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q1" : activeQuarter);
+const activeQ = activeQuarter === "Goal Setting" ? null : activeQuarter;
+const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q1" : activeQuarter);
 
   const quarters = [
     { key: "Q1", label: "Q1 Check-In", window: "July – September", month: "Jul" },
