@@ -310,6 +310,7 @@ function Sidebar({ user, view, setView, onLogout }) {
   { key: "admin-dash",  icon: "◈", label: "Overview" },
   { key: "all-goals",   icon: "⊞", label: "All Goals" },
   { key: "push-goal",   icon: "↑", label: "Push Shared Goal" },
+  { key: "analytics",   icon: "◎", label: "Analytics" },
   { key: "cycle",       icon: "⊙", label: "Cycle Config" },
   { key: "org",         icon: "⊕", label: "Org Hierarchy" },
   { key: "audit",       icon: "⊡", label: "Audit Log" },
@@ -1134,6 +1135,167 @@ function MgrCheckinView({ user, goals, setGoals, allUsers }) {
     </div>
   );
 }
+// ─── ANALYTICS VIEW ───────────────────────────────────────────────────────────
+function AnalyticsView({ goals, allUsers }) {
+  const employees = Object.values(allUsers).filter(u => u.role === "employee");
+  const managers = Object.values(allUsers).filter(u => u.role === "manager");
+
+  // Goal distribution by Thrust Area
+  const thrustData = THRUST_AREAS.map(t => ({
+    name: t, count: goals.filter(g => g.thrustArea === t).length,
+    approved: goals.filter(g => g.thrustArea === t && g.goalStatus === "approved").length,
+  })).filter(x => x.count > 0);
+
+  // Goal distribution by UoM
+  const uomData = UOM_TYPES.map(u => ({
+    name: u.split(" ")[0], count: goals.filter(g => g.uom === u).length
+  })).filter(x => x.count > 0);
+
+  // Per employee scores
+  const empScores = employees.map(emp => {
+    const eg = goals.filter(g => g.employeeId === emp.id && g.goalStatus === "approved");
+    const scores = eg.map(computeScore).filter(s => s !== null);
+    const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    return { name: emp.name.split(" ")[0], score: avg, dept: emp.dept, total: eg.length };
+  });
+
+  // Manager effectiveness
+  const mgrData = managers.map(mgr => {
+    const teamIds = employees.filter(e => e.managerId === mgr.id).map(e => e.id);
+    const teamGoals = goals.filter(g => teamIds.includes(g.employeeId) && g.goalStatus === "approved");
+    const withCheckins = teamGoals.filter(g => g.checkIns.length > 0).length;
+    const rate = teamGoals.length ? Math.round((withCheckins / teamGoals.length) * 100) : 0;
+    return { name: mgr.name.split(" ")[0], rate, total: teamGoals.length, done: withCheckins };
+  });
+
+  // QoQ simulated data
+  const qoqData = [
+    { q: "Q1", avg: empScores.reduce((a, b) => a + b.score, 0) / (empScores.length || 1) | 0 },
+    { q: "Q2", avg: 0 },
+    { q: "Q3", avg: 0 },
+    { q: "Q4", avg: 0 },
+  ];
+
+  const maxThrust = Math.max(...thrustData.map(t => t.count), 1);
+  const maxEmp = Math.max(...empScores.map(e => e.score), 1);
+
+  return (
+    <div className="fadeUp">
+      <style>{STYLE}</style>
+      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Analytics</h2>
+      <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 28 }}>Organisation-wide goal performance and completion insights.</p>
+
+      {/* Top stats */}
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
+        {[
+          { label: "Total Goals", val: goals.length },
+          { label: "Approved", val: goals.filter(g => g.goalStatus === "approved").length, color: COLORS.success },
+          { label: "Avg Org Score", val: `${empScores.reduce((a, b) => a + b.score, 0) / (empScores.length || 1) | 0}%`, color: COLORS.accent },
+          { label: "Check-Ins Done", val: goals.filter(g => g.checkIns.length > 0).length, color: COLORS.blue },
+        ].map(s => (
+          <div key={s.label} className="card fadeUp" style={{ flex: 1, minWidth: 120 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .6, textTransform: "uppercase", color: COLORS.muted, marginBottom: 10 }}>{s.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: s.color || COLORS.text }}>{s.val}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+
+        {/* Goal distribution by Thrust Area */}
+        <div className="card">
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 18 }}>Goals by Thrust Area</div>
+          {thrustData.map(t => (
+            <div key={t.name} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12 }}>
+                <span style={{ color: COLORS.text }}>{t.name}</span>
+                <span className="mono" style={{ color: COLORS.muted }}>{t.approved}/{t.count}</span>
+              </div>
+              <div className="progress-bar-track">
+                <div className="progress-bar-fill" style={{ width: `${Math.round(t.count / maxThrust * 100)}%`, background: COLORS.accent }} />
+              </div>
+              <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 3 }}>
+                {t.approved} approved · {t.count - t.approved} pending/draft
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* UoM Distribution */}
+        <div className="card">
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 18 }}>Goals by UoM Type</div>
+          {uomData.map((u, i) => {
+            const colors = [COLORS.accent, COLORS.blue, COLORS.success, COLORS.warning];
+            const pct = Math.round(u.count / goals.length * 100);
+            return (
+              <div key={u.name} style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12 }}>
+                  <span style={{ color: COLORS.text }}>{u.name}</span>
+                  <span className="mono" style={{ color: COLORS.muted }}>{u.count} ({pct}%)</span>
+                </div>
+                <div className="progress-bar-track">
+                  <div className="progress-bar-fill" style={{ width: `${pct}%`, background: colors[i] }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+
+        {/* Employee score heatmap */}
+        <div className="card">
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 18 }}>Employee Achievement Scores</div>
+          {empScores.map(e => (
+            <div key={e.name} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12 }}>
+                <span>{e.name} <span style={{ color: COLORS.muted }}>· {e.dept}</span></span>
+                <span className="mono" style={{ color: e.score >= 100 ? COLORS.success : e.score >= 70 ? COLORS.accent : COLORS.danger, fontWeight: 700 }}>{e.score}%</span>
+              </div>
+              <div className="progress-bar-track">
+                <div className="progress-bar-fill" style={{ width: `${Math.min(e.score, 100)}%`, background: e.score >= 100 ? COLORS.success : e.score >= 70 ? COLORS.accent : COLORS.danger }} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Manager effectiveness */}
+        <div className="card">
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 18 }}>Manager Effectiveness</div>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 14 }}>Check-in completion rate per manager</div>
+          {mgrData.map(m => (
+            <div key={m.name} style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12 }}>
+                <span style={{ fontWeight: 600 }}>{m.name}</span>
+                <span className="mono" style={{ color: m.rate >= 80 ? COLORS.success : m.rate >= 50 ? COLORS.warning : COLORS.danger, fontWeight: 700 }}>{m.rate}%</span>
+              </div>
+              <div className="progress-bar-track">
+                <div className="progress-bar-fill" style={{ width: `${m.rate}%`, background: m.rate >= 80 ? COLORS.success : m.rate >= 50 ? COLORS.warning : COLORS.danger }} />
+              </div>
+              <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 3 }}>{m.done} of {m.total} goals checked in</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* QoQ Trend */}
+      <div className="card">
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Quarter-on-Quarter Achievement Trend</div>
+        <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 20 }}>Q2, Q3, Q4 data will populate as check-ins are completed</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 16, height: 120 }}>
+          {qoqData.map((q, i) => (
+            <div key={q.q} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <span className="mono" style={{ fontSize: 11, color: q.avg > 0 ? COLORS.accent : COLORS.muted }}>{q.avg > 0 ? `${q.avg}%` : "—"}</span>
+              <div style={{ width: "100%", background: q.avg > 0 ? COLORS.accent : COLORS.border, borderRadius: "4px 4px 0 0", height: `${q.avg > 0 ? Math.max(20, q.avg) : 10}px`, transition: "height .5s ease" }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.muted }}>{q.q}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─── CYCLE CONFIG VIEW ────────────────────────────────────────────────────────
 function CycleConfigView({ goals }) {
   const month = new Date().getMonth() + 1;
@@ -1676,6 +1838,7 @@ useEffect(() => {
       case "admin-dash":  return <AdminDashView {...props} />;
       case "all-goals":   return <AllGoalsView {...props} />;
       case "push-goal":   return <PushGoalView {...props} />;
+      case "analytics":   return <AnalyticsView {...props} />;
       case "cycle":       return <CycleConfigView {...props} />;
       case "org":         return <OrgHierarchyView {...props} />;
       case "audit":       return <AuditView {...props} />;
