@@ -278,6 +278,8 @@ function Sidebar({ user, view, setView, onLogout }) {
   { key: "admin-dash",  icon: "◈", label: "Overview" },
   { key: "all-goals",   icon: "⊞", label: "All Goals" },
   { key: "push-goal",   icon: "↑", label: "Push Shared Goal" },
+  { key: "cycle",       icon: "⊙", label: "Cycle Config" },
+  { key: "org",         icon: "⊕", label: "Org Hierarchy" },
   { key: "audit",       icon: "⊡", label: "Audit Log" },
   { key: "export",      icon: "↓", label: "Export Report" },
 ] : []),
@@ -1040,7 +1042,168 @@ function MgrCheckinView({ user, goals, setGoals, allUsers }) {
     </div>
   );
 }
+// ─── CYCLE CONFIG VIEW ────────────────────────────────────────────────────────
+function CycleConfigView({ goals }) {
+  const month = new Date().getMonth() + 1;
+  const activeWindow = month >= 5 && month <= 6 ? "Goal Setting" :
+                       month >= 7 && month <= 9 ? "Q1 Check-In" :
+                       month >= 10 && month <= 12 ? "Q2 Check-In" :
+                       month >= 1 && month <= 3 ? "Q3 Check-In" : "Q4 Annual";
 
+  const cycles = [
+    { label: "Goal Setting Window", period: "1 May – 30 June", status: month >= 5 && month <= 6 },
+    { label: "Q1 Check-In", period: "July – September", status: month >= 7 && month <= 9 },
+    { label: "Q2 Check-In", period: "October – December", status: month >= 10 && month <= 12 },
+    { label: "Q3 Check-In", period: "January – March", status: month >= 1 && month <= 3 },
+    { label: "Q4 / Annual", period: "March – April", status: month >= 3 && month <= 4 },
+  ];
+
+  return (
+    <div className="fadeUp">
+      <style>{STYLE}</style>
+      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Cycle Configuration</h2>
+      <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 28 }}>FY 2025-26 performance cycle windows and status.</p>
+
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
+        <div className="card fadeUp" style={{ flex: 1, minWidth: 140 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .6, textTransform: "uppercase", color: COLORS.muted, marginBottom: 10 }}>Financial Year</div>
+          <div style={{ fontSize: 28, fontWeight: 800 }}>2025–26</div>
+        </div>
+        <div className="card fadeUp" style={{ flex: 1, minWidth: 140 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .6, textTransform: "uppercase", color: COLORS.muted, marginBottom: 10 }}>Active Window</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.success }}>{activeWindow}</div>
+        </div>
+        <div className="card fadeUp" style={{ flex: 1, minWidth: 140 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .6, textTransform: "uppercase", color: COLORS.muted, marginBottom: 10 }}>Total Goals</div>
+          <div style={{ fontSize: 28, fontWeight: 800 }}>{goals.length}</div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 18 }}>Quarter Windows — FY 2025-26</div>
+        {cycles.map((c, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: i < cycles.length - 1 ? `1px solid ${COLORS.border}` : "none" }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{c.label}</div>
+              <div style={{ fontSize: 12, color: COLORS.muted }}>{c.period}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.status ? COLORS.success : COLORS.border, display: "inline-block" }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: c.status ? COLORS.success : COLORS.muted }}>
+                {c.status ? "ACTIVE" : "INACTIVE"}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── ORG HIERARCHY VIEW ───────────────────────────────────────────────────────
+function OrgHierarchyView({ allUsers }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newUser, setNewUser] = useState({ name: "", email: "", dept: "", role: "employee", managerId: "mgr1" });
+  const [users, setUsers] = useState(Object.values(allUsers));
+  const [done, setDone] = useState(false);
+
+  const managers = users.filter(u => u.role === "manager");
+  const employees = users.filter(u => u.role === "employee");
+
+  function handleAdd() {
+    if (!newUser.name || !newUser.email) return alert("Name and email required.");
+    setUsers(prev => [...prev, { ...newUser, id: `u_${Date.now()}` }]);
+    setDone(true);
+    setTimeout(() => { setDone(false); setShowAdd(false); setNewUser({ name: "", email: "", dept: "", role: "employee", managerId: "mgr1" }); }, 1500);
+  }
+
+  return (
+    <div className="fadeUp">
+      <style>{STYLE}</style>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Org Hierarchy</h2>
+          <p style={{ color: COLORS.muted, fontSize: 14 }}>Manage employees and reporting structure.</p>
+        </div>
+        <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Add Employee</button>
+      </div>
+
+      {/* Managers */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.muted, letterSpacing: .6, textTransform: "uppercase", marginBottom: 12 }}>Managers</div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {managers.map(m => (
+            <div key={m.id} className="card" style={{ minWidth: 180, flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{m.name}</div>
+              <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 8 }}>{m.dept} · {m.email}</div>
+              <div style={{ fontSize: 11 }}>
+                <span style={{ color: COLORS.success, fontWeight: 700 }}>
+                  {employees.filter(e => e.managerId === m.id).length} direct reports
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Employees table */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.border}`, fontWeight: 700, fontSize: 15 }}>
+          Employees ({employees.length})
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th><th>Email</th><th>Dept</th><th>Reports To</th><th>Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map(emp => (
+              <tr key={emp.id}>
+                <td style={{ fontWeight: 600 }}>{emp.name}</td>
+                <td style={{ color: COLORS.muted, fontSize: 13 }}>{emp.email}</td>
+                <td>{emp.dept}</td>
+                <td>{managers.find(m => m.id === emp.managerId)?.name || "—"}</td>
+                <td><span style={{ fontSize: 11, fontWeight: 700, color: COLORS.blue, textTransform: "uppercase" }}>{emp.role}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Add employee modal */}
+      {showAdd && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
+          <div className="card fadeUp" style={{ width: "100%", maxWidth: 480 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+              <h3 style={{ fontWeight: 800, fontSize: 18 }}>{done ? "Added!" : "Add Employee"}</h3>
+              <button className="btn-ghost" style={{ padding: "6px 12px" }} onClick={() => setShowAdd(false)}>✕</button>
+            </div>
+            {done ? (
+              <div style={{ textAlign: "center", padding: 20, color: COLORS.success, fontSize: 32 }}>✓</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div><label>Full Name</label><input value={newUser.name} onChange={e => setNewUser(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Amit Shah" /></div>
+                <div><label>Email</label><input value={newUser.email} onChange={e => setNewUser(f => ({ ...f, email: e.target.value }))} placeholder="amit@atomberg.com" /></div>
+                <div><label>Department</label><input value={newUser.dept} onChange={e => setNewUser(f => ({ ...f, dept: e.target.value }))} placeholder="e.g. Sales" /></div>
+                <div>
+                  <label>Reports To</label>
+                  <select value={newUser.managerId} onChange={e => setNewUser(f => ({ ...f, managerId: e.target.value }))}>
+                    {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                  <button className="btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
+                  <button className="btn-primary" onClick={handleAdd}>Add Employee</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 // ─── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
 function AdminDashView({ goals, allUsers }) {
   const employees = Object.values(allUsers).filter(u => u.role === "employee");
@@ -1375,6 +1538,8 @@ export default function App() {
       case "admin-dash":  return <AdminDashView {...props} />;
       case "all-goals":   return <AllGoalsView {...props} />;
       case "push-goal":   return <PushGoalView {...props} />;
+      case "cycle":       return <CycleConfigView {...props} />;
+      case "org":         return <OrgHierarchyView {...props} />;
       case "audit":       return <AuditView {...props} />;
       case "export":      return <ExportView {...props} />;
       default: return <div style={{ padding: 40, color: COLORS.muted }}>Select a view from the sidebar.</div>;
