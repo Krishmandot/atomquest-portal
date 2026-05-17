@@ -195,7 +195,6 @@ const STYLE = `
     }
   }
 `;
-
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const THRUST_AREAS = ["Revenue Growth", "Cost Optimisation", "Customer Experience", "Product Quality", "People & Culture", "Operational Excellence", "Safety & Compliance", "Innovation"];
 const UOM_TYPES = ["Min (Numeric/%)", "Max (Numeric/%)", "Timeline", "Zero"];
@@ -818,7 +817,7 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{g.title}</div>
                   <div style={{ fontSize: 12, color: COLORS.muted }}>{g.thrustArea} · <span className="mono">{g.uom}</span> · {g.weightage}% weight</div>
                 </div>
-               {!isEditing && windowOpen && selectedQ === activeQ && (
+               {!isEditing && (
   <button className="btn-ghost" onClick={() => openEdit(g)}>
     Update {selectedQ}
   </button>
@@ -1960,7 +1959,11 @@ useEffect(() => {
   }
 }, [goals]);
   const [view, setView] = useState(null);
+const [isMobile, setIsMobile] = useState(false);
 
+useEffect(() => {
+  setIsMobile(window.innerWidth <= 768);
+}, []);
   function handleLogin(u) {
     setUser(u);
     const defaultViews = { employee: "my-goals", manager: "team", admin: "admin-dash" };
@@ -1998,7 +2001,7 @@ useEffect(() => {
 return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column" }}>
       <style>{STYLE}</style>
-      <div style={{ display: "flex", flex: 1, flexDirection: typeof window !== 'undefined' && window.innerWidth <= 768 ? "column" : "row" }}>
+      <div style={{ display: "flex", flex: 1, flexDirection: isMobile ? "column" : "row" }}>
         <div className="sidebar-wrap" style={{ zIndex: 10 }}>
           <Sidebar user={user} view={view} setView={setView} onLogout={handleLogout} />
         </div>
