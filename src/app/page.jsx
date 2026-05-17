@@ -753,7 +753,7 @@ function openWeightageOnly(g) {
 }
 
 // ─── CHECK-IN VIEW (Employee) ─────────────────────────────────────────────────
-function CheckInView({ user, goals, setGoals }) {
+function CheckInView({ user, goals, setGoals, showToast }) {
   
   
   const myGoals = goals.filter(g => g.employeeId === user.id && g.goalStatus === "approved");
@@ -808,6 +808,7 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
     });
   });
   setEditing(null);
+if (showToast) showToast("Achievement saved successfully!");
 }
 
   const windowOpen = isWindowOpen(selectedQ);
@@ -1205,9 +1206,14 @@ function MgrCheckinView({ user, goals, setGoals, allUsers }) {
             })}
           </tbody>
         </table>
+        {teamGoals.length === 0 && (
+          <div style={{ textAlign: "center", color: COLORS.muted, padding: 40, fontSize: 13 }}>
+            No approved goals to review yet. Goals will appear here once approved.
+          </div>
+        )}
       </div>
 
-      {commentGoal && (
+      {commentGoal &&(
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
           <div className="card fadeUp" style={{ width: "100%", maxWidth: 480 }}>
             <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 16 }}>Add Check-In Comment</h3>
@@ -1818,7 +1824,7 @@ function AllGoalsView({ goals, setGoals, allUsers }) {
 }
 
 // ─── PUSH SHARED GOAL ─────────────────────────────────────────────────────────
-function PushGoalView({ goals, setGoals, allUsers }) {
+function PushGoalView({ goals, setGoals, allUsers, showToast }) {
   const employees = Object.values(allUsers).filter(u => u.role === "employee");
   const [form, setForm] = useState({ thrustArea: THRUST_AREAS[0], title: "", description: "", uom: UOM_TYPES[0], target: "", weightage: "10" });
   const [selected, setSelected] = useState([]);
