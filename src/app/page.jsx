@@ -691,7 +691,7 @@ function CheckInView({ user, goals, setGoals }) {
   const myGoals = goals.filter(g => g.employeeId === user.id && g.goalStatus === "approved");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
-  
+
  // Active quarter based on current month
 const month = new Date().getMonth() + 1; // 1-12
 const activeQuarter = month >= 5 && month <= 6 ? "Goal Setting" :
@@ -1619,6 +1619,7 @@ useEffect(() => {
       case "my-goals":    return <MyGoalsView {...props} />;
     case "checkin": 
       return <CheckInView user={user} goals={goals} setGoals={setGoals} />;
+      case "team":        return <TeamView {...props} />;
       case "approvals":   return <ApprovalsView {...props} />;
       case "mgr-checkin": return <MgrCheckinView {...props} />;
       case "admin-dash":  return <AdminDashView {...props} />;
