@@ -1016,13 +1016,23 @@ function returnGoal(gid) {
     auditLog: [...g.auditLog, { action: "returned for rework", by: user.id, reason: "Manager returned", date: new Date().toLocaleDateString() }]
   } : g));
 }
-  function saveInlineEdit() {
+function saveInlineEdit() {
+  const empGoals = goals.filter(g => g.employeeId === editingGoal.employeeId && g.id !== editingGoal.id);
+  const otherW = empGoals.reduce((s, g) => s + Number(g.weightage), 0);
+  if (otherW + Number(editForm.weightage) > 100) {
+    alert(`Weightage would exceed 100%. Employee already has ${otherW}% on other goals. Max allowed here: ${100 - otherW}%`);
+    return;
+  }
+  if (Number(editForm.weightage) < 10) {
+    alert("Minimum weightage per goal is 10%.");
+    return;
+  }
   setGoals(prev => prev.map(g => g.id === editingGoal.id ? {
     ...g, ...editForm,
     target: Number(editForm.target),
     weightage: Number(editForm.weightage),
     auditLog: [...g.auditLog, {
-     action: `manager edited — target: ${editingGoal.target}→${editForm.target}, weightage: ${editingGoal.weightage}%→${editForm.weightage}%`,
+      action: `manager edited — target: ${editingGoal.target}→${editForm.target}, weightage: ${editingGoal.weightage}%→${editForm.weightage}%`,
       by: user.id,
       reason: "Inline edit during approval",
       date: new Date().toLocaleDateString()
@@ -1030,7 +1040,6 @@ function returnGoal(gid) {
   } : g));
   setEditingGoal(null);
 }
-
   return (
     <div className="fadeUp">
       <style>{STYLE}</style>
