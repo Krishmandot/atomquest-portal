@@ -686,7 +686,7 @@ function MyGoalsView({ user, goals, setGoals, allUsers }) {
 
 // ─── CHECK-IN VIEW (Employee) ─────────────────────────────────────────────────
 function CheckInView({ user, goals, setGoals }) {
-  const activeQ = typeof getActiveQuarter === 'function' ? getActiveQuarter() : null;
+  
   
   const myGoals = goals.filter(g => g.employeeId === user.id && g.goalStatus === "approved");
   const [editing, setEditing] = useState(null);
@@ -694,10 +694,7 @@ function CheckInView({ user, goals, setGoals }) {
 
   // Active quarter based on current month
   const month = new Date().getMonth() + 1; // 1-12
-  const activeQuarter = month >= 5 && month <= 6 ? "Goal Setting" :
-                        month === 7 || month === 8 || month === 9 ? "Q1" :
-                        month === 10 || month === 11 || month === 12 ? "Q2" :
-                        month === 1 || month === 2 || month === 3 ? "Q3" : "Q4";
+  const activeQ = activeQuarter === "Goal Setting" ? null : activeQuarter;
 
   const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q1" : activeQuarter);
 
@@ -805,11 +802,11 @@ function CheckInView({ user, goals, setGoals }) {
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{g.title}</div>
                   <div style={{ fontSize: 12, color: COLORS.muted }}>{g.thrustArea} · <span className="mono">{g.uom}</span> · {g.weightage}% weight</div>
                 </div>
-                {!isEditing && windowOpen && (
-                  <button className="btn-ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => openEdit(g)}>
-                    Update {selectedQ}
-                  </button>
-                )}
+               {!isEditing && windowOpen && selectedQ === activeQ && (
+  <button className="btn-ghost" onClick={() => openEdit(g)}>
+    Update {selectedQ}
+  </button>
+)}
                 {!windowOpen && (
                   <span style={{ fontSize: 11, color: COLORS.muted, fontWeight: 600 }}>Window Closed</span>
                 )}
@@ -1599,15 +1596,7 @@ useEffect(() => {
   }
 }, [goals]);
   const [view, setView] = useState(null);
-// Phase 2: Quarterly Window Enforcement [cite: 36, 37]
-  const getActiveQuarter = () => {
-    const month = new Date().getMonth(); // 0=Jan, 6=July, 9=Oct, 2/3=Mar/Apr 
-    if (month === 6) return "Q1 (July)";
-    if (month === 9) return "Q2 (October)";
-    if (month === 0) return "Q3 (January)";
-    if (month === 2 || month === 3) return "Q4 (March/April)";
-    return null; // Window is currently closed 
-  };
+
   function handleLogin(u) {
     setUser(u);
     const defaultViews = { employee: "my-goals", manager: "team", admin: "admin-dash" };
