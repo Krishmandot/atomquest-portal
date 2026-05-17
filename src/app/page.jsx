@@ -685,7 +685,8 @@ function MyGoalsView({ user, goals, setGoals, allUsers }) {
 }
 
 // ─── CHECK-IN VIEW (Employee) ─────────────────────────────────────────────────
-function CheckInView({ user, goals, setGoals, activeQ }) {
+function CheckInView({ user, goals, setGoals }) {
+  const activeQ = typeof getActiveQuarter === 'function' ? getActiveQuarter() : null;
   
   const myGoals = goals.filter(g => g.employeeId === user.id && g.goalStatus === "approved");
   const [editing, setEditing] = useState(null);
@@ -1623,15 +1624,8 @@ useEffect(() => {
     const props = { user, goals, setGoals, allUsers: USERS };
     switch (view) {
       case "my-goals":    return <MyGoalsView {...props} />;
-     case "check-in": 
-      return (
-        <CheckInView 
-          user={user} 
-          goals={goals} 
-          setGoals={setGoals} 
-          activeQ={typeof getActiveQuarter === 'function' ? getActiveQuarter() : null} 
-        />
-      );
+    case "check-in": 
+      return <CheckInView user={user} goals={goals} setGoals={setGoals} />;
       case "approvals":   return <ApprovalsView {...props} />;
       case "mgr-checkin": return <MgrCheckinView {...props} />;
       case "admin-dash":  return <AdminDashView {...props} />;
