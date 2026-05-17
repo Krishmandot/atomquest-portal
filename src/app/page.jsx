@@ -311,6 +311,7 @@ function Sidebar({ user, view, setView, onLogout }) {
   { key: "all-goals",   icon: "⊞", label: "All Goals" },
   { key: "push-goal",   icon: "↑", label: "Push Shared Goal" },
   { key: "analytics",   icon: "◎", label: "Analytics" },
+  { key: "escalation",  icon: "⚠", label: "Escalation" },
   { key: "cycle",       icon: "⊙", label: "Cycle Config" },
   { key: "org",         icon: "⊕", label: "Org Hierarchy" },
   { key: "audit",       icon: "⊡", label: "Audit Log" },
@@ -1296,6 +1297,149 @@ function AnalyticsView({ goals, allUsers }) {
     </div>
   );
 }
+// ─── ESCALATION VIEW ──────────────────────────────────────────────────────────
+function EscalationView({ goals, allUsers }) {
+  const employees = Object.values(allUsers).filter(u => u.role === "employee");
+  const managers = Object.values(allUsers).filter(u => u.role === "manager");
+
+  const rules = [
+    { id: "r1", name: "Goal Submission Overdue", condition: "Employee has not submitted goals within 7 days of cycle open", days: 7, level: "Employee" },
+    { id: "r2", name: "Manager Approval Overdue", condition: "Manager has not approved goals within 5 days of submission", days: 5, level: "Manager" },
+    { id: "r3", name: "Q1 Check-In Overdue", condition: "Employee has not completed Q1 check-in within active window", days: 14, level: "Employee" },
+    { id: "r4", name: "Q2 Check-In Overdue", condition: "Employee has not completed Q2 check-in within active window", days: 14, level: "Employee" },
+    { id: "r5", name: "Manager Check-In Missing", condition: "Manager has not added check-in comment after employee update", days: 3, level: "Manager" },
+  ];
+
+  const escalations = [];
+  employees.forEach(emp => {
+    const empGoals = goals.filter(g => g.employeeId === emp.id);
+    const draftGoals = empGoals.filter(g => g.goalStatus === "draft");
+    const pendingGoals = empGoals.filter(g => g.goalStatus === "pending");
+    const approvedNoCheckin = empGoals.filter(g => g.goalStatus === "approved" && g.achievement === null);
+
+    if (draftGoals.length > 0) {
+      escalations.push({
+        id: `e_${emp.id}_draft`, employee: emp.name,
+        manager: managers.find(m => m.id === emp.managerId)?.name || "—",
+        issue: `${draftGoals.length} goal(s) not submitted`,
+        rule: "Goal Submission Overdue", status: "active"
+      });
+    }
+    if (pendingGoals.length > 0) {
+      escalations.push({
+        id: `e_${emp.id}_pending`, employee: emp.name,
+        manager: managers.find(m => m.id === emp.managerId)?.name || "—",
+        issue: `${pendingGoals.length} goal(s) pending approval`,
+        rule: "Manager Approval Overdue", status: "escalated"
+      });
+    }
+    if (approvedNoCheckin.length > 0) {
+      escalations.push({
+        id: `e_${emp.id}_checkin`, employee: emp.name,
+        manager: managers.find(m => m.id === emp.managerId)?.name || "—",
+        issue: `${approvedNoCheckin.length} goal(s) missing check-in`,
+        rule: "Q1 Check-In Overdue", status: "active"
+      });
+    }
+  });
+
+  return (
+    <div className="fadeUp">
+      <style>{STYLE}</style>
+      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Escalation Module</h2>
+      <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 28 }}>Rule-based auto-escalation for overdue goals and check-ins.</p>
+
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
+        {[
+          { label: "Active Rules", val: rules.length },
+          { label: "Active Escalations", val: escalations.filter(e => e.status === "active").length, color: COLORS.warning },
+          { label: "Escalated to HR", val: escalations.filter(e => e.status === "escalated").length, color: COLORS.danger },
+          { label: "Resolved", val: 0, color: COLORS.success },
+        ].map(s => (
+          <div key={s.label} className="card fadeUp" style={{ flex: 1, minWidth: 120 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .6, textTransform: "uppercase", color: COLORS.muted, marginBottom: 10 }}>{s.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: s.color || COLORS.text }}>{s.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Rules */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 18 }}>Configured Escalation Rules</div>
+        {rules.map((rule, i) => (
+          <div key={rule.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "14px 0", borderBottom: i < rules.length - 1 ? `1px solid ${COLORS.border}` : "none" }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{rule.name}</div>
+              <div style={{ fontSize: 12, color: COLORS.muted }}>{rule.condition}</div>
+            </div>
+            <div style={{ textAlign: "right", marginLeft: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.accent }}>{rule.days} days</div>
+              <div style={{ fontSize: 11, color: COLORS.muted }}>{rule.level}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Escalation chain */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Escalation Chain</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+          {[
+            { day: "Day 1", label: "Notify Employee", color: COLORS.blue },
+            { day: "Day 3", label: "Notify Manager", color: COLORS.warning },
+            { day: "Day 7", label: "Escalate to HR", color: COLORS.danger },
+          ].map((step, i, arr) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", flex: 1 }}>
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: step.color, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", fontSize: 12, fontWeight: 800, color: "#0D0F14" }}>{i + 1}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: step.color }}>{step.day}</div>
+                <div style={{ fontSize: 11, color: COLORS.muted }}>{step.label}</div>
+              </div>
+              {i < arr.length - 1 && <div style={{ height: 2, flex: 1, background: COLORS.border, margin: "0 4px" }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Escalation log */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.border}`, fontWeight: 700, fontSize: 15 }}>
+          Escalation Log ({escalations.length})
+        </div>
+        {escalations.length === 0 ? (
+          <div style={{ textAlign: "center", color: COLORS.muted, padding: 40 }}>No escalations — all goals on track!</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th><th>Manager</th><th>Issue</th><th>Rule Triggered</th><th>Chain</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {escalations.map(e => (
+                <tr key={e.id}>
+                  <td style={{ fontWeight: 600 }}>{e.employee}</td>
+                  <td style={{ color: COLORS.muted }}>{e.manager}</td>
+                  <td style={{ fontSize: 13 }}>{e.issue}</td>
+                  <td style={{ fontSize: 12, color: COLORS.muted }}>{e.rule}</td>
+                  <td style={{ fontSize: 11, color: COLORS.muted }}>
+                    {e.status === "escalated" ? "Employee → Manager → HR" : "Employee → Manager"}
+                  </td>
+                  <td>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: e.status === "escalated" ? COLORS.danger : COLORS.warning }}>
+                      {e.status === "escalated" ? "Escalated" : "Active"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
 // ─── CYCLE CONFIG VIEW ────────────────────────────────────────────────────────
 function CycleConfigView({ goals }) {
   const month = new Date().getMonth() + 1;
@@ -1839,6 +1983,7 @@ useEffect(() => {
       case "all-goals":   return <AllGoalsView {...props} />;
       case "push-goal":   return <PushGoalView {...props} />;
       case "analytics":   return <AnalyticsView {...props} />;
+      case "escalation":  return <EscalationView {...props} />;
       case "cycle":       return <CycleConfigView {...props} />;
       case "org":         return <OrgHierarchyView {...props} />;
       case "audit":       return <AuditView {...props} />;
