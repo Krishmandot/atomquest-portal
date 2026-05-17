@@ -655,10 +655,16 @@ function CheckinView({ user, goals, setGoals }) {
 
   function openEdit(g) { setEditing(g.id); setForm({ achievement: g.achievement ?? "", status: g.status }); }
 
-  function handleSave(goalId) {
-    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, achievement: Number(form.achievement), status: form.status } : g));
-    setEditing(null);
-  }
+ function handleSave(goalId) {
+  const goalToUpdate = goals.find(g => g.id === goalId);
+  setGoals(prev => prev.map(g => {
+    if (g.id === goalId) return { ...g, achievement: Number(form.achievement), status: form.status };
+    if (g.isShared && goalToUpdate.isShared && g.title === goalToUpdate.title)
+      return { ...g, achievement: Number(form.achievement) };
+    return g;
+  }));
+  setEditing(null);
+}
 
   return (
     <div className="fadeUp">
