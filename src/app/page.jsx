@@ -202,7 +202,7 @@ const SEED_GOALS = [
     id: "g4", employeeId: "emp2", thrustArea: "Revenue Growth", title: "Close 15 enterprise accounts",
     description: "New logo acquisition in South zone", uom: "Min (Numeric/%)", target: 15,
     achievement: 11, weightage: 50, status: "On Track", goalStatus: "pending", isShared: false,
-    checkIns: [], auditLog: []
+    checkIns: [], auditLog: []-
   },
   {
     id: "g5", employeeId: "emp2", thrustArea: "People & Culture", title: "Complete 3 L&D certifications",
@@ -665,7 +665,9 @@ function CheckinView({ user, goals, setGoals }) {
       <style>{STYLE}</style>
       <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Q1 Check-In</h2>
       <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 28 }}>Update your actual achievements for Q1 (April – June 2025). Window closes 31 July.</p>
-
+<div style={{ background: "rgba(96,165,250,0.1)", border: "1px solid #60A5FA", borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 13, color: "#60A5FA" }}>
+  Goals are locked after approval. You can only update actual achievement and status.
+</div>
       {myGoals.length === 0 && (
         <div className="card" style={{ textAlign: "center", color: COLORS.muted, padding: 48 }}>
           No approved goals to update yet. Get your goals approved first.
