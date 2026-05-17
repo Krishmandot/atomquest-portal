@@ -275,12 +275,15 @@ function Sidebar({ user, view, setView, onLogout }) {
       { key: "mgr-checkin", icon: "✦", label: "Check-Ins" },
     ] : []),
     ...(isAdmin  ? [
-      { key: "admin-dash",  icon: "◈", label: "Overview" },
-      { key: "all-goals",   icon: "⊞", label: "All Goals" },
-      { key: "push-goal",   icon: "↑", label: "Push Shared Goal" },
-      { key: "audit",       icon: "⊡", label: "Audit Log" },
-      { key: "export",      icon: "↓", label: "Export Report" },
-    ] : []),
+  { key: "admin-dash",  icon: "◈", label: "Overview" },
+  { key: "all-goals",   icon: "⊞", label: "All Goals" },
+  { key: "push-goal",   icon: "↑", label: "Push Shared Goal" },
+  { key: "audit",       icon: "⊡", label: "Audit Log" },
+  { key: "export",      icon: "↓", label: "Export Report" },
+] : []),
+...(isMgr ? [
+  { key: "push-goal",   icon: "↑", label: "Push Shared Goal" },
+] : []),
   ];
 
   const ROLE_COLORS = { employee: COLORS.blue, manager: COLORS.success, admin: COLORS.accent };
