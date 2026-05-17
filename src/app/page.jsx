@@ -272,7 +272,12 @@ function computeScore(goal) {
   const { uom, target, achievement } = goal;
   if (!achievement && achievement !== 0) return null;
   if (uom === "Zero") return achievement === 0 ? 100 : 0;
-  if (uom === "Timeline") return achievement <= target ? 100 : Math.max(0, 100 - (achievement - target) * 10);
+  if (uom === "Timeline") {
+  const deadline = new Date(target).getTime();
+  const actual = new Date(achievement).getTime();
+  if (isNaN(deadline) || isNaN(actual)) return null;
+  return actual <= deadline ? 100 : Math.max(0, 100 - Math.round((actual - deadline) / 86400000) * 5);
+}
   if (uom === "Min (Numeric/%)") return target === 0 ? 100 : Math.min(150, Math.round((achievement / target) * 100));
   if (uom === "Max (Numeric/%)") return achievement === 0 ? 100 : Math.min(150, Math.round((target / achievement) * 100));
   return null;
@@ -690,7 +695,11 @@ function openWeightageOnly(g) {
         </div>
         <div>
           <label>Target {errors.target && <span style={{ color: COLORS.danger }}>— {errors.target}</span>}</label>
-          <input type="number" value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} placeholder="e.g. 12000000" />
+          {form.uom === "Timeline" ? (
+  <input type="date" value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} />
+) : (
+  <input type="number" value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} placeholder={form.uom === "Zero" ? "Enter 0" : "e.g. 12000000"} />
+)}
         </div>
       </div>
     </>
@@ -749,7 +758,7 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
 
   function handleSave(goalId) {
   setGoals(prev => {
-    const goalToUpdate = prev.find(g => g.id === goalId); // ← inside
+    const goalToUpdate = prev.find(g => g.id === goalId);
     return prev.map(g => {
       if (g.id === goalId) return {
         ...g,
@@ -762,7 +771,7 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
           date: new Date().toLocaleDateString()
         }]
       };
-      if (goalToUpdate && g.isShared && goalToUpdate.isShared && g.title === goalToUpdate.title)
+      if (goalToUpdate?.isShared && g.isShared && g.title === goalToUpdate.title && g.id !== goalId)
         return { ...g, achievement: Number(form.achievement) };
       return g;
     });
@@ -858,7 +867,11 @@ const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                     <div>
                       <label>Actual Achievement ({selectedQ})</label>
-                      <input type="number" value={form.achievement} onChange={e => setForm(f => ({ ...f, achievement: e.target.value }))} />
+                      {g.uom === "Timeline" ? (
+  <input type="date" value={form.achievement} onChange={e => setForm(f => ({ ...f, achievement: e.target.value }))} />
+) : (
+  <input type="number" value={form.achievement} onChange={e => setForm(f => ({ ...f, achievement: e.target.value }))} />
+)}
                     </div>
                     <div>
                       <label>Status</label>
@@ -1009,7 +1022,7 @@ function returnGoal(gid) {
     target: Number(editForm.target),
     weightage: Number(editForm.weightage),
     auditLog: [...g.auditLog, {
-      action: `manager edited — target: ${editForm.target}, weightage: ${editForm.weightage}%`,
+     action: `manager edited — target: ${editingGoal.target}→${editForm.target}, weightage: ${editingGoal.weightage}%→${editForm.weightage}%`,
       by: user.id,
       reason: "Inline edit during approval",
       date: new Date().toLocaleDateString()
@@ -1663,7 +1676,10 @@ function AdminDashView({ goals, allUsers }) {
       {/* Per-employee summary */}
       <div className="card" style={{ marginBottom: 20, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.border}` }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Employee Completion Status</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>📋 Completion Dashboard</div>
+<div style={{ fontSize: 12, color: COLORS.muted, marginTop: 4 }}>
+  Real-time view of check-in completion per employee — BRD §4
+</div>
         </div>
         <table>
           <thead><tr><th>Employee</th><th>Dept</th><th>Goals</th><th>Approved</th><th>Pending</th><th>Avg Score</th><th>Check-Ins Done</th></tr></thead>
@@ -1975,13 +1991,16 @@ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
- const [goals, setGoals] = useState(() => {
-  if (typeof window !== "undefined") {
+ const [goals, setGoals] = useState(SEED_GOALS);
+
+useEffect(() => {
+  try {
     const saved = localStorage.getItem("atomquest_goals");
-    if (saved) return JSON.parse(saved);
+    if (saved) setGoals(JSON.parse(saved));
+  } catch (e) {
+    console.error("Failed to load saved goals:", e);
   }
-  return SEED_GOALS;
-});
+}, []);
 
 useEffect(() => {
   if (typeof window !== "undefined") {
@@ -1992,7 +2011,10 @@ useEffect(() => {
 const [isMobile, setIsMobile] = useState(false);
 
 useEffect(() => {
-  setIsMobile(window.innerWidth <= 768);
+  const check = () => setIsMobile(window.innerWidth <= 768);
+  check();
+  window.addEventListener("resize", check);
+  return () => window.removeEventListener("resize", check);
 }, []);
   function handleLogin(u) {
   const defaultViews = { employee: "my-goals", manager: "team", admin: "admin-dash" };
