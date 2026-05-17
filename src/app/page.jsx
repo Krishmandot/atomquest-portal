@@ -685,7 +685,8 @@ function MyGoalsView({ user, goals, setGoals, allUsers }) {
 }
 
 // ─── CHECK-IN VIEW (Employee) ─────────────────────────────────────────────────
-function CheckinView({ user, goals, setGoals }) {
+function CheckInView({ user, goals, setGoals, activeQ }) {
+  const activeQ = getActiveQuarter();
   const myGoals = goals.filter(g => g.employeeId === user.id && g.goalStatus === "approved");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
@@ -1622,7 +1623,7 @@ useEffect(() => {
     const props = { user, goals, setGoals, allUsers: USERS };
     switch (view) {
       case "my-goals":    return <MyGoalsView {...props} />;
-      case "checkin":     return <CheckinView {...props} />;
+     case "check-in": return <CheckInView {...props} activeQ={getActiveQuarter()} />;
       case "team":        return <TeamView {...props} />;
       case "approvals":   return <ApprovalsView {...props} />;
       case "mgr-checkin": return <MgrCheckinView {...props} />;
