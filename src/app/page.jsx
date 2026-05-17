@@ -1623,8 +1623,15 @@ useEffect(() => {
     const props = { user, goals, setGoals, allUsers: USERS };
     switch (view) {
       case "my-goals":    return <MyGoalsView {...props} />;
-      case "check-in": return <CheckInView user={user} goals={goals} setGoals={setGoals} activeQ={getActiveQuarter()} />;
-      case "team":        return <TeamView {...props} />;
+     case "check-in": 
+      return (
+        <CheckInView 
+          user={user} 
+          goals={goals} 
+          setGoals={setGoals} 
+          activeQ={typeof getActiveQuarter === 'function' ? getActiveQuarter() : null} 
+        />
+      );
       case "approvals":   return <ApprovalsView {...props} />;
       case "mgr-checkin": return <MgrCheckinView {...props} />;
       case "admin-dash":  return <AdminDashView {...props} />;
