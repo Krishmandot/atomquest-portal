@@ -166,13 +166,23 @@ const STYLE = `
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: rgba(232,255,71,.025); }
 
+ .mobile-sidebar {
+    width: 230px;
+    min-height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-right: 1px solid ${COLORS.border};
+  }
+
   @media (max-width: 768px) {
-    .sidebar-wrap {
-      position: static !important;
+    .mobile-sidebar {
+      position: relative !important;
       width: 100% !important;
       min-height: auto !important;
       border-right: none !important;
-      border-bottom: 1px solid ${COLORS.border};
+      border-bottom: 1px solid ${COLORS.border} !important;
     }
     .main-content {
       padding: 24px !important;
@@ -314,7 +324,7 @@ function Sidebar({ user, view, setView, onLogout }) {
   const roleCol = ROLE_COLORS[user.role];
 
   return (
-    <div style={{ width: 230, minHeight: "100vh", background: COLORS.surface, borderRight: `1px solid ${COLORS.border}`, display: "flex", flexDirection: "column", position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 10 }}>
+  <div className="mobile-sidebar" style={{ background: COLORS.surface, display: "flex", flexDirection: "column", zIndex: 10 }}>
       {/* Logo */}
       <div style={{ padding: "28px 24px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
