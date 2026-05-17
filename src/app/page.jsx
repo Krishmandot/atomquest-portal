@@ -656,24 +656,82 @@ function CheckinView({ user, goals, setGoals }) {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
 
+  // Active quarter based on current month
+  const month = new Date().getMonth() + 1; // 1-12
+  const activeQuarter = month >= 5 && month <= 6 ? "Goal Setting" :
+                        month === 7 || month === 8 || month === 9 ? "Q1" :
+                        month === 10 || month === 11 || month === 12 ? "Q2" :
+                        month === 1 || month === 2 || month === 3 ? "Q3" : "Q4";
+
+  const [selectedQ, setSelectedQ] = useState(activeQuarter === "Goal Setting" ? "Q1" : activeQuarter);
+
+  const quarters = [
+    { key: "Q1", label: "Q1 Check-In", window: "July – September", month: "Jul" },
+    { key: "Q2", label: "Q2 Check-In", window: "October – December", month: "Oct" },
+    { key: "Q3", label: "Q3 Check-In", window: "January – March", month: "Jan" },
+    { key: "Q4", label: "Q4 / Annual", window: "March – April", month: "Mar", isFinal: true },
+  ];
+
+  function isWindowOpen(qKey) {
+    if (qKey === "Q1") return month >= 7 && month <= 9;
+    if (qKey === "Q2") return month >= 10 && month <= 12;
+    if (qKey === "Q3") return month >= 1 && month <= 3;
+    if (qKey === "Q4") return month >= 3 && month <= 4;
+    return false;
+  }
+
   function openEdit(g) { setEditing(g.id); setForm({ achievement: g.achievement ?? "", status: g.status }); }
 
- function handleSave(goalId) {
-  const goalToUpdate = goals.find(g => g.id === goalId);
-  setGoals(prev => prev.map(g => {
-    if (g.id === goalId) return { ...g, achievement: Number(form.achievement), status: form.status };
-    if (g.isShared && goalToUpdate.isShared && g.title === goalToUpdate.title)
-      return { ...g, achievement: Number(form.achievement) };
-    return g;
-  }));
-  setEditing(null);
-}
+  function handleSave(goalId) {
+    const goalToUpdate = goals.find(g => g.id === goalId);
+    setGoals(prev => prev.map(g => {
+      if (g.id === goalId) return { ...g, achievement: Number(form.achievement), status: form.status };
+      if (g.isShared && goalToUpdate.isShared && g.title === goalToUpdate.title)
+        return { ...g, achievement: Number(form.achievement) };
+      return g;
+    }));
+    setEditing(null);
+  }
+
+  const windowOpen = isWindowOpen(selectedQ);
+  const selectedQuarterInfo = quarters.find(q => q.key === selectedQ);
 
   return (
     <div className="fadeUp">
       <style>{STYLE}</style>
-      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Q1 Check-In</h2>
-      <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 28 }}>Update your actual achievements for Q1 (April – June 2025). Window closes 31 July.</p>
+      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Quarterly Check-In</h2>
+      <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 20 }}>Log your actual achievements per quarter against planned targets.</p>
+
+      {/* Active window banner */}
+      <div style={{ background: activeQuarter === "Goal Setting" ? "rgba(232,255,71,0.08)" : "rgba(52,211,153,0.08)", border: `1px solid ${activeQuarter === "Goal Setting" ? COLORS.accent : COLORS.success}`, borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 13, color: activeQuarter === "Goal Setting" ? COLORS.accent : COLORS.success }}>
+        Currently active: <strong>{activeQuarter === "Goal Setting" ? "Goal Setting Window (May – June)" : `${activeQuarter} Check-In Window`}</strong> — {activeQuarter === "Goal Setting" ? "Create and submit your goals" : `Log your ${activeQuarter} achievements`}
+      </div>
+
+      {/* Quarter tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
+        {quarters.map(q => (
+          <button key={q.key} onClick={() => setSelectedQ(q.key)} style={{
+            padding: "8px 18px", borderRadius: 8, border: `1px solid ${selectedQ === q.key ? COLORS.accent : COLORS.border}`,
+            background: selectedQ === q.key ? COLORS.accentGlow : "transparent",
+            color: selectedQ === q.key ? COLORS.accent : COLORS.muted,
+            fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 13, cursor: "pointer",
+            position: "relative"
+          }}>
+            {q.label}
+            {activeQuarter === q.key && <span style={{ position: "absolute", top: -4, right: -4, width: 8, height: 8, borderRadius: "50%", background: COLORS.success }} />}
+            {q.isFinal && <span style={{ marginLeft: 6, fontSize: 10, color: COLORS.warning, fontWeight: 700 }}>FINAL</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Window status */}
+      <div style={{ marginBottom: 20, fontSize: 12, color: COLORS.muted }}>
+        <span style={{ fontWeight: 700, color: windowOpen ? COLORS.success : COLORS.danger }}>
+          {windowOpen ? "● Window Open" : "● Window Closed"}
+        </span>
+        {" "}— {selectedQuarterInfo?.window}
+        {!windowOpen && <span style={{ marginLeft: 8, color: COLORS.muted }}>(Opens in {selectedQuarterInfo?.month})</span>}
+      </div>
 
       {myGoals.length === 0 && (
         <div className="card" style={{ textAlign: "center", color: COLORS.muted, padding: 48 }}>
@@ -692,14 +750,21 @@ function CheckinView({ user, goals, setGoals }) {
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{g.title}</div>
                   <div style={{ fontSize: 12, color: COLORS.muted }}>{g.thrustArea} · <span className="mono">{g.uom}</span> · {g.weightage}% weight</div>
                 </div>
-                {!isEditing && <button className="btn-ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => openEdit(g)}>Update</button>}
+                {!isEditing && windowOpen && (
+                  <button className="btn-ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => openEdit(g)}>
+                    Update {selectedQ}
+                  </button>
+                )}
+                {!windowOpen && (
+                  <span style={{ fontSize: 11, color: COLORS.muted, fontWeight: 600 }}>Window Closed</span>
+                )}
               </div>
 
               {isEditing ? (
                 <div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                     <div>
-                      <label>Actual Achievement</label>
+                      <label>Actual Achievement ({selectedQ})</label>
                       <input type="number" value={form.achievement} onChange={e => setForm(f => ({ ...f, achievement: e.target.value }))} />
                     </div>
                     <div>
@@ -711,7 +776,7 @@ function CheckinView({ user, goals, setGoals }) {
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setEditing(null)}>Cancel</button>
-                    <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => handleSave(g.id)}>Save</button>
+                    <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => handleSave(g.id)}>Save {selectedQ}</button>
                   </div>
                 </div>
               ) : (
@@ -727,6 +792,14 @@ function CheckinView({ user, goals, setGoals }) {
                       <div style={{ fontWeight: 700, color: item.accent ? COLORS.accent : COLORS.text }}>{item.val}</div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Q4 Annual summary */}
+              {selectedQ === "Q4" && (
+                <div style={{ marginTop: 14, padding: "10px 14px", background: "rgba(251,191,36,0.08)", borderRadius: 8, borderLeft: `3px solid ${COLORS.warning}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.warning, marginBottom: 4 }}>ANNUAL SUMMARY</div>
+                  <div style={{ fontSize: 13 }}>Final achievement score: <strong style={{ color: COLORS.accent }}>{score !== null ? `${score}%` : "—"}</strong></div>
                 </div>
               )}
 
