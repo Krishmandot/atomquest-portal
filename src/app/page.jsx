@@ -1965,10 +1965,10 @@ useEffect(() => {
   setIsMobile(window.innerWidth <= 768);
 }, []);
   function handleLogin(u) {
-    setUser(u);
-    const defaultViews = { employee: "my-goals", manager: "team", admin: "admin-dash" };
-    setView(defaultViews[u.role]);
-  }
+  const defaultViews = { employee: "my-goals", manager: "team", admin: "admin-dash" };
+  setView(defaultViews[u.role]);
+  setUser(u);
+}
 
   function handleLogout() { setUser(null); setView(null); }
 
@@ -1980,6 +1980,7 @@ useEffect(() => {
     const props = { user, goals, setGoals, allUsers: USERS };
     switch (view) {
       case "my-goals":    return <MyGoalsView {...props} />;
+      case "team":      return <TeamView {...props} />;
     case "checkin": 
       return <CheckInView user={user} goals={goals} setGoals={setGoals} />;
       
