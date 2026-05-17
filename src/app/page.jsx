@@ -499,7 +499,12 @@ function MyGoalsView({ user, goals, setGoals, allUsers }) {
 
   function openAdd() { setForm(blank); setEditGoal(null); setErrors({}); setShowForm(true); }
   function openEdit(g) { setForm({ ...g }); setEditGoal(g.id); setErrors({}); setShowForm(true); }
-
+function openWeightageOnly(g) {
+  setForm({ ...g });
+  setEditGoal(g.id);
+  setErrors({});
+  setShowForm("weightage-only");
+}
   function validate() {
     const errs = {};
     if (!form.title.trim()) errs.title = "Required";
@@ -617,6 +622,9 @@ function MyGoalsView({ user, goals, setGoals, allUsers }) {
                       {g.goalStatus === "draft" && !g.isShared && (
                         <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }} onClick={() => openEdit(g)}>Edit</button>
                       )}
+                      {g.goalStatus === "draft" && g.isShared && (
+  <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }} onClick={() => openWeightageOnly(g)}>Adjust Weight</button>
+)}
                       {g.goalStatus === "draft" && (
                         <button className="btn-primary" style={{ padding: "5px 10px", fontSize: 12 }} onClick={() => handleSubmit(g.id)}>Submit</button>
                       )}
@@ -633,7 +641,7 @@ function MyGoalsView({ user, goals, setGoals, allUsers }) {
       </div>
 
       {/* Goal Form Modal */}
-      {showForm && (
+    {(showForm === true || showForm === "weightage-only") && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
           <div className="card fadeUp" style={{ width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -642,32 +650,36 @@ function MyGoalsView({ user, goals, setGoals, allUsers }) {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <label>Thrust Area</label>
-                <select value={form.thrustArea} onChange={e => setForm(f => ({ ...f, thrustArea: e.target.value }))}>
-                  {THRUST_AREAS.map(a => <option key={a}>{a}</option>)}
-                </select>
-              </div>
-              <div>
-                <label>Goal Title {errors.title && <span style={{ color: COLORS.danger }}>— {errors.title}</span>}</label>
-                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Achieve ₹1.2Cr quarterly revenue" />
-              </div>
-              <div>
-                <label>Description</label>
-                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Brief context about this goal..." />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label>Unit of Measurement</label>
-                  <select value={form.uom} onChange={e => setForm(f => ({ ...f, uom: e.target.value }))}>
-                    {UOM_TYPES.map(u => <option key={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label>Target {errors.target && <span style={{ color: COLORS.danger }}>— {errors.target}</span>}</label>
-                  <input type="number" value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} placeholder="e.g. 12000000" />
-                </div>
-              </div>
+  {showForm === true && (
+    <>
+      <div>
+        <label>Thrust Area</label>
+        <select value={form.thrustArea} onChange={e => setForm(f => ({ ...f, thrustArea: e.target.value }))}>
+          {THRUST_AREAS.map(a => <option key={a}>{a}</option>)}
+        </select>
+      </div>
+      <div>
+        <label>Goal Title {errors.title && <span style={{ color: COLORS.danger }}>— {errors.title}</span>}</label>
+        <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Achieve ₹1.2Cr quarterly revenue" />
+      </div>
+      <div>
+        <label>Description</label>
+        <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Brief context about this goal..." />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label>Unit of Measurement</label>
+          <select value={form.uom} onChange={e => setForm(f => ({ ...f, uom: e.target.value }))}>
+            {UOM_TYPES.map(u => <option key={u}>{u}</option>)}
+          </select>
+        </div>
+        <div>
+          <label>Target {errors.target && <span style={{ color: COLORS.danger }}>— {errors.target}</span>}</label>
+          <input type="number" value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} placeholder="e.g. 12000000" />
+        </div>
+      </div>
+    </>
+  )}
               <div>
                 <label>Weightage (%) {errors.weightage && <span style={{ color: COLORS.danger }}>— {errors.weightage}</span>}</label>
                 <input type="number" min={10} max={100} value={form.weightage} onChange={e => setForm(f => ({ ...f, weightage: e.target.value }))} placeholder="Min 10%, and total must equal 100%" />
