@@ -311,7 +311,9 @@ function computeScore(goal) {
   if (uom === "Max (Numeric/%)") return achievement === 0 ? 100 : Math.min(150, Math.round((target / achievement) * 100));
   return null;
 }
-
+function sanitize(str) {
+  return String(str || "").replace(/[<>\"'`]/g, "").trim();
+}
 function totalWeightage(goals) { return goals.reduce((s, g) => s + (Number(g.weightage) || 0), 0); }
 
 function statusColor(s) {
@@ -520,7 +522,7 @@ function Login({ onLogin }) {
 }
 
 // ─── MY GOALS VIEW ────────────────────────────────────────────────────────────
-function MyGoalsView({ user, goals, setGoals, allUsers }) {
+function MyGoalsView({ user, goals, setGoals, allUsers, showToast }) {
   const [showForm, setShowForm] = useState(false);
   const [editGoal, setEditGoal] = useState(null);
   const myGoals = goals.filter(g => g.employeeId === user.id);
@@ -567,7 +569,7 @@ function openWeightageOnly(g) {
     if (editGoal) {
       setGoals(prev => prev.map(g => g.id === editGoal ? { ...g, ...form, target: Number(form.target), weightage: Number(form.weightage) } : g));
     } else {
-      const newG = { ...form, id: `g_${Date.now()}`, employeeId: user.id, achievement: null, status: "Not Started", goalStatus: "draft", checkIns: [], auditLog: [], target: Number(form.target), weightage: Number(form.weightage) };
+      const newG = { ...form, title: sanitize(form.title), description: sanitize(form.description), id: `g_${Date.now()}`, employeeId: user.id, achievement: null, status: "Not Started", goalStatus: "draft", checkIns: [], auditLog: [], target: Number(form.target), weightage: Number(form.weightage) };
       setGoals(prev => [...prev, newG]);
     }
     setShowForm(false);
@@ -576,7 +578,7 @@ function openWeightageOnly(g) {
   function handleSubmit(goalId) {
   if (tw !== 100) { showToast(`Weightage is ${tw}%. Must be exactly 100%.`, "error"); return; }
   setGoals(prev => prev.map(g => g.id === goalId ? { ...g, goalStatus: "pending" } : g));
-  alert("Goal submitted for manager approval!");
+  if (showToast) showToast("Goal submitted for approval!");
 }
 
  function handleSubmitAll() {
@@ -584,7 +586,7 @@ function openWeightageOnly(g) {
   if (tw !== 100) { showToast(`Weightage is ${tw}%. Must be exactly 100%.`, "error"); return; }
   const underMin = draftGoals.find(g => Number(g.weightage) < 10);
   if (underMin) {
-    alert(`Goal "${underMin.title}" has weightage below 10%. Minimum is 10%.`);
+    if (showToast) showToast(`"${underMin.title}" has weightage below 10%.`, "error");
     return;
   }
   setGoals(prev => prev.map(g => g.employeeId === user.id && g.goalStatus === "draft" ? { ...g, goalStatus: "pending" } : g));
@@ -1010,7 +1012,7 @@ function TeamView({ user, goals, allUsers }) {
 }
 
 // ─── MANAGER APPROVALS VIEW ───────────────────────────────────────────────────
-function ApprovalsView({ user, goals, setGoals, allUsers }) {
+function ApprovalsView({ user, goals, setGoals, allUsers, showToast }) {
   const teamEmpIds = Object.values(allUsers).filter(u => u.role === "employee" && u.managerId === user.id).map(u => u.id);
   const pendingGoals = goals.filter(g => teamEmpIds.includes(g.employeeId) && g.goalStatus === "pending");
   const [editingGoal, setEditingGoal] = useState(null);
@@ -1024,7 +1026,7 @@ async function sendNotification(type, to, employeeName, goalTitle, managerName =
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, to, employeeName, goalTitle, managerName })
     });
-  } catch (e) { console.log("Notification failed", e); }
+  } catch (e) { console.warn("Notification failed silently", e); }
 }
   function approve(gid) {
   const goal = goals.find(g => g.id === gid);
@@ -1034,6 +1036,7 @@ async function sendNotification(type, to, employeeName, goalTitle, managerName =
     ...g, goalStatus: "approved",
     auditLog: [...g.auditLog, { action: "approved", by: user.id, reason: "Manager approved", date: new Date().toLocaleDateString() }]
   } : g));
+  if (showToast) showToast(`Goal approved for ${emp.name}!`);
 }
 
 function returnGoal(gid) {
@@ -1044,16 +1047,17 @@ function returnGoal(gid) {
     ...g, goalStatus: "rework",
     auditLog: [...g.auditLog, { action: "returned for rework", by: user.id, reason: "Manager returned", date: new Date().toLocaleDateString() }]
   } : g));
+  if (showToast) showToast(`Goal returned for revision.`, "error");
 }
 function saveInlineEdit() {
   const empGoals = goals.filter(g => g.employeeId === editingGoal.employeeId && g.id !== editingGoal.id);
   const otherW = empGoals.reduce((s, g) => s + Number(g.weightage), 0);
   if (otherW + Number(editForm.weightage) > 100) {
-    alert(`Weightage would exceed 100%. Employee already has ${otherW}% on other goals. Max allowed here: ${100 - otherW}%`);
+    if (showToast) showToast(`Weightage exceeds 100%. Max allowed: ${100 - otherW}%`, "error");
     return;
   }
   if (Number(editForm.weightage) < 10) {
-    alert("Minimum weightage per goal is 10%.");
+    if (showToast) showToast("Minimum weightage per goal is 10%.", "error");
     return;
   }
   setGoals(prev => prev.map(g => g.id === editingGoal.id ? {
