@@ -162,6 +162,28 @@ const STYLE = `
   td { padding: 13px 14px; border-bottom: 1px solid rgba(37,42,56,.6); vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: rgba(232,255,71,.025); }
+/* ... your other css ... */
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(232,255,71,.025); }
+
+  @media (max-width: 768px) {
+    .sidebar-wrap {
+      position: static !important;
+      width: 100% !important;
+      min-height: auto !important;
+      border-right: none !important;
+      border-bottom: 1px solid ${COLORS.border};
+    }
+    .main-content {
+      padding: 24px !important;
+    }
+    .stats-grid {
+      flex-direction: column !important;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+  }
 `;
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
@@ -886,15 +908,35 @@ function ApprovalsView({ user, goals, setGoals, allUsers }) {
   const [comment, setComment] = useState("");
 
   function approve(gid) {
-    setGoals(prev => prev.map(g => g.id === gid ? { ...g, goalStatus: "approved" } : g));
+    setGoals(prev => prev.map(g => g.id === gid ? { 
+      ...g, 
+      goalStatus: "approved",
+      auditLog: [...(g.auditLog || []), { 
+        action: "approved", 
+        by: user.id, 
+        reason: "Manager Approval",
+        date: new Date().toLocaleDateString() 
+      }]
+    } : g));
   }
   function returnGoal(gid) {
     setGoals(prev => prev.map(g => g.id === gid ? { ...g, goalStatus: "rework" } : g));
   }
   function saveInlineEdit() {
-    setGoals(prev => prev.map(g => g.id === editingGoal.id ? { ...g, ...editForm, target: Number(editForm.target), weightage: Number(editForm.weightage) } : g));
-    setEditingGoal(null);
-  }
+  setGoals(prev => prev.map(g => g.id === editingGoal.id ? { 
+    ...g, 
+    ...editForm, 
+    target: Number(editForm.target), 
+    weightage: Number(editForm.weightage),
+    auditLog: [...(g.auditLog || []), { 
+      action: "manager inline edit", 
+      by: user.id, 
+      reason: `Target/Weight changed`,
+      date: new Date().toLocaleDateString() 
+    }]
+  } : g));
+  setEditingGoal(null);
+}
 
   return (
     <div className="fadeUp">
@@ -1512,7 +1554,19 @@ function ExportView({ goals, allUsers }) {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
-  const [goals, setGoals] = useState(SEED_GOALS);
+ const [goals, setGoals] = useState(() => {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("atomquest_goals");
+    if (saved) return JSON.parse(saved);
+  }
+  return SEED_GOALS;
+});
+
+useEffect(() => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("atomquest_goals", JSON.stringify(goals));
+  }
+}, [goals]);
   const [view, setView] = useState(null);
 
   function handleLogin(u) {
@@ -1546,13 +1600,17 @@ export default function App() {
     }
   }
 
-  return (
-    <div style={{ minHeight: "100vh", background: COLORS.bg }}>
+return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column" }}>
       <style>{STYLE}</style>
-      <Sidebar user={user} view={view} setView={setView} onLogout={handleLogout} />
-      <main style={{ ...MAIN_PAD, padding: "36px 36px 36px 266px", minHeight: "100vh" }}>
-        {renderView()}
-      </main>
+      <div style={{ display: "flex", flex: 1, flexDirection: typeof window !== 'undefined' && window.innerWidth <= 768 ? "column" : "row" }}>
+        <div className="sidebar-wrap" style={{ zIndex: 10 }}>
+          <Sidebar user={user} view={view} setView={setView} onLogout={handleLogout} />
+        </div>
+        <main className="main-content" style={{ ...MAIN_PAD, padding: "36px", flex: 1, overflowX: "hidden" }}>
+          {renderView()}
+        </main>
+      </div>
     </div>
   );
 }
