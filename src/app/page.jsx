@@ -736,9 +736,28 @@ function CheckinView({ user, goals, setGoals }) {
       <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Quarterly Check-In</h2>
       <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 20 }}>Log your actual achievements per quarter against planned targets.</p>
 
-      {/* Active window banner */}
-      <div style={{ background: activeQuarter === "Goal Setting" ? "rgba(232,255,71,0.08)" : "rgba(52,211,153,0.08)", border: `1px solid ${activeQuarter === "Goal Setting" ? COLORS.accent : COLORS.success}`, borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 13, color: activeQuarter === "Goal Setting" ? COLORS.accent : COLORS.success }}>
-        Currently active: <strong>{activeQuarter === "Goal Setting" ? "Goal Setting Window (May – June)" : `${activeQuarter} Check-In Window`}</strong> — {activeQuarter === "Goal Setting" ? "Create and submit your goals" : `Log your ${activeQuarter} achievements`}
+     {/* Phase 2.3: Quarterly Window Compliance Banner [cite: 37] */}
+      <div style={{ 
+        padding: "16px 20px", 
+        background: activeQ ? "rgba(52,211,153,0.1)" : "rgba(252,211,77,0.1)", 
+        border: `1px solid ${activeQ ? COLORS.success : COLORS.warning}`, 
+        borderRadius: 8, 
+        marginBottom: 24,
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }}>
+        <div style={{ fontSize: "20px" }}>{activeQ ? "✅" : "⏳"}</div>
+        <div>
+          <div style={{ fontWeight: 700, color: activeQ ? COLORS.success : COLORS.warning }}>
+            {activeQ ? `Active Window: ${activeQ}` : "Check-in Window Closed"}
+          </div>
+          <div style={{ fontSize: "12px", opacity: 0.8 }}>
+            {activeQ 
+              ? "Progress updates are currently open for submission per the corporate schedule." 
+              : "Next window opens: July (Q1). Demo Mode: Inputs remain enabled for evaluation."}
+          </div>
+        </div>
       </div>
 
       {/* Quarter tabs */}
@@ -1578,7 +1597,15 @@ useEffect(() => {
   }
 }, [goals]);
   const [view, setView] = useState(null);
-
+// Phase 2: Quarterly Window Enforcement [cite: 36, 37]
+  const getActiveQuarter = () => {
+    const month = new Date().getMonth(); // 0=Jan, 6=July, 9=Oct, 2/3=Mar/Apr 
+    if (month === 6) return "Q1 (July)";
+    if (month === 9) return "Q2 (October)";
+    if (month === 0) return "Q3 (January)";
+    if (month === 2 || month === 3) return "Q4 (March/April)";
+    return null; // Window is currently closed 
+  };
   function handleLogin(u) {
     setUser(u);
     const defaultViews = { employee: "my-goals", manager: "team", admin: "admin-dash" };
